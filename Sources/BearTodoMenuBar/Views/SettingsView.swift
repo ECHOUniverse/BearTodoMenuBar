@@ -2,11 +2,57 @@ import SwiftUI
 import AppKit
 import EventKit
 
+// MARK: - Liquid Glass Card
+
+struct GlassCard<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+    }
+}
+
+// MARK: - Status Pill
+
+struct StatusPill: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption2)
+            Text(text)
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(color.opacity(0.12))
+        )
+    }
+}
+
+// MARK: - Settings View
+
 struct SettingsView: View {
     @State private var token: String = ""
     @State private var showSuccess = false
     @State private var showError = false
-    @State private var errorMessage = ""
+    @State private var errorMessage: String = ""
     @State private var isAuthorized: Bool = false
     @State private var isReminderSyncEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
@@ -14,93 +60,175 @@ struct SettingsView: View {
     var onClose: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Bear API Token")
-                .font(.title2)
-                .fontWeight(.semibold)
+        ZStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("设置")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        Text("配置 Bear 待办同步选项")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 4)
 
-            Text("请在 Bear 应用中选择 Help → API Token 获取你的个人 Token。")
-                .font(.callout)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                    // MARK: API Token Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "key.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text("Bear API Token")
+                                    .font(.headline)
+                            }
 
-            SecureField("输入 API Token", text: $token)
-                .textFieldStyle(.roundedBorder)
+                            Text("在 Bear 应用中选择 Help → API Token 获取你的个人 Token。")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
 
-            Divider()
+                            SecureField("输入 API Token", text: $token)
+                                .textFieldStyle(.plain)
+                                .padding(10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color(nsColor: .textBackgroundColor).opacity(0.6))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                                )
+                        }
+                    }
 
-            Text("同步到系统提醒事项")
-                .font(.title3)
-                .fontWeight(.semibold)
+                    // MARK: Reminders Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bell.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text("系统提醒事项")
+                                    .font(.headline)
+                                Spacer()
+                                StatusPill(
+                                    icon: reminderAccessIcon,
+                                    text: reminderAccessTextShort,
+                                    color: reminderAccessColor
+                                )
+                            }
 
-            Toggle(isOn: $isReminderSyncEnabled) {
-                Text("启用同步")
-            }
-            .onChange(of: isReminderSyncEnabled) { enabled in
-                handleReminderSyncToggle(enabled)
-            }
+                            Toggle(isOn: $isReminderSyncEnabled) {
+                                Text("启用同步")
+                                    .font(.callout)
+                            }
+                            .toggleStyle(.switch)
+                            .onChange(of: isReminderSyncEnabled) { enabled in
+                                handleReminderSyncToggle(enabled)
+                            }
 
-            HStack {
-                Image(systemName: reminderAccessIcon)
-                    .foregroundColor(reminderAccessColor)
-                Text(reminderAccessText)
-                    .font(.callout)
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
+                            if !reminderAccessDescription.isEmpty {
+                                Text(reminderAccessDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
 
-            Divider()
+                    // MARK: Database Auth Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "archivebox.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text("数据库访问授权")
+                                    .font(.headline)
+                                Spacer()
+                                StatusPill(
+                                    icon: isAuthorized ? "checkmark" : "exclamationmark",
+                                    text: isAuthorized ? "已授权" : "未授权",
+                                    color: isAuthorized ? .green : .orange
+                                )
+                            }
 
-            Text("数据库访问授权")
-                .font(.title3)
-                .fontWeight(.semibold)
+                            Text(isAuthorized
+                                 ? "已授权访问 Bear 数据库，自动刷新可用。"
+                                 : "未授权访问 Bear 数据库，自动刷新功能不可用。")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
 
-            HStack {
-                Image(systemName: isAuthorized ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundColor(isAuthorized ? .green : .orange)
-                Text(isAuthorized ? "已授权自动刷新" : "未授权，自动刷新不可用")
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
+                            Button {
+                                requestBookmark()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
+                                    Text(isAuthorized ? "重新授权" : "授权访问")
+                                }
+                                .font(.callout)
+                                .fontWeight(.medium)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.regular)
+                        }
+                    }
 
-            Button(isAuthorized ? "重新授权" : "授权访问 Bear 数据库") {
-                requestBookmark()
-            }
+                    Spacer(minLength: 8)
 
-            Spacer()
+                    // Bottom Actions
+                    HStack {
+                        Spacer()
 
-            HStack {
-                Spacer()
+                        Button("取消") {
+                            onClose?()
+                        }
+                        .keyboardShortcut(.cancelAction)
 
-                Button("取消") {
-                    onClose?()
+                        Button("保存") {
+                            saveToken()
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
+                    }
                 }
-                .keyboardShortcut(.cancelAction)
+                .padding(24)
+            }
 
-                Button("保存") {
-                    saveToken()
+            // Success Toast
+            if showSuccess {
+                VStack {
+                    Spacer()
+                    Text("保存成功")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    Spacer().frame(height: 24)
                 }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
             }
         }
-        .padding()
-        .frame(width: 400, height: 400)
+        .frame(minWidth: 420, maxWidth: .infinity, minHeight: 480, maxHeight: .infinity)
         .onAppear {
             token = KeychainStorage.shared.token ?? ""
             isAuthorized = BearBookmarkManager.shared.hasBookmark
             isReminderSyncEnabled = KeychainStorage.shared.isReminderSyncEnabled
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
-        }
-        .overlay {
-            if showSuccess {
-                Text("保存成功")
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(8)
-                    .transition(.opacity)
-            }
         }
         .alert("保存失败", isPresented: $showError) {
             Button("确定", role: .cancel) {}
@@ -109,39 +237,50 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Reminder Access Helpers
+
     private var reminderAccessIcon: String {
-        if reminderAccessStatus == .authorized {
-            return "checkmark.circle.fill"
-        } else if reminderAccessStatus == .denied || reminderAccessStatus == .restricted {
-            return "xmark.circle.fill"
-        } else {
-            return "exclamationmark.triangle.fill"
+        switch reminderAccessStatus {
+        case .authorized: return "checkmark"
+        case .denied, .restricted: return "xmark"
+        default: return "exclamationmark"
         }
     }
 
     private var reminderAccessColor: Color {
-        if reminderAccessStatus == .authorized {
-            return .green
-        } else if reminderAccessStatus == .denied || reminderAccessStatus == .restricted {
-            return .red
-        } else {
-            return .orange
+        switch reminderAccessStatus {
+        case .authorized: return .green
+        case .denied, .restricted: return .red
+        default: return .orange
         }
     }
 
-    private var reminderAccessText: String {
-        if reminderAccessStatus == .authorized {
-            return "已获取提醒事项权限"
-        } else if reminderAccessStatus == .denied {
-            return "权限已被拒绝，请前往系统设置开启"
-        } else if reminderAccessStatus == .restricted {
-            return "权限受限制，无法访问提醒事项"
-        } else if reminderAccessStatus == .notDetermined {
-            return "尚未请求权限"
-        } else {
-            return "未知状态"
+    private var reminderAccessTextShort: String {
+        switch reminderAccessStatus {
+        case .authorized: return "已允许"
+        case .denied: return "已拒绝"
+        case .restricted: return "受限制"
+        case .notDetermined: return "待授权"
+        default: return "未知"
         }
     }
+
+    private var reminderAccessDescription: String {
+        switch reminderAccessStatus {
+        case .authorized:
+            return "提醒事项权限已获取，待办将自动同步到系统提醒事项。"
+        case .denied:
+            return "权限已被拒绝，请前往系统设置 → 隐私与安全性 → 提醒事项中开启。"
+        case .restricted:
+            return "权限受限制，无法访问提醒事项。"
+        case .notDetermined:
+            return "开启开关后将请求提醒事项权限。"
+        default:
+            return ""
+        }
+    }
+
+    // MARK: - Actions
 
     private func handleReminderSyncToggle(_ enabled: Bool) {
         KeychainStorage.shared.isReminderSyncEnabled = enabled
@@ -202,7 +341,7 @@ struct SettingsView: View {
         KeychainStorage.shared.token = token
         showSuccess = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             showSuccess = false
             onClose?()
         }

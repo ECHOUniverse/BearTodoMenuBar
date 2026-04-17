@@ -18,9 +18,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         refresh()
     }
 
+    private var isBearFrontmost: Bool {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "net.shinyfrog.bear"
+    }
+
     private func setupFileWatcher() {
         fileWatcher.onChange = { [weak self] in
-            self?.refresh()
+            guard let self = self else { return }
+            guard !self.isBearFrontmost else { return }
+            self.refresh()
         }
         fileWatcher.onPermissionDenied = { [weak self] in
             self?.rebuildMenu()

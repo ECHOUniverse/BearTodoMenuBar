@@ -51,7 +51,9 @@ final class XCallbackClient {
         }
 
         DispatchQueue.main.async {
-            NSWorkspace.shared.open(url)
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = false
+            NSWorkspace.shared.open(url, configuration: config, completionHandler: nil)
         }
     }
 

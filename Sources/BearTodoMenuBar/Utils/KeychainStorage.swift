@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 extension Notification.Name {
     static let bearAPITokenDidChange = Notification.Name("bearAPITokenDidChange")
@@ -6,19 +7,20 @@ extension Notification.Name {
 
 class KeychainStorage {
     static let shared = KeychainStorage()
-    private let tokenKey = "bear_api_token"
+    private let service = "com.beartodo"
+    private let tokenAccount = "bear_api_token"
     private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let defaults = UserDefaults.standard
 
     var token: String? {
         get {
-            return defaults.string(forKey: tokenKey)
+            return readFromKeychain(account: tokenAccount)
         }
         set {
             if let value = newValue, !value.isEmpty {
-                defaults.set(value, forKey: tokenKey)
+                _ = saveToKeychain(value, account: tokenAccount)
             } else {
-                defaults.removeObject(forKey: tokenKey)
+                deleteFromKeychain(account: tokenAccount)
             }
             NotificationCenter.default.post(name: .bearAPITokenDidChange, object: nil)
         }
@@ -41,7 +43,54 @@ class KeychainStorage {
     }
 
     func clearToken() {
-        defaults.removeObject(forKey: tokenKey)
+        deleteFromKeychain(account: tokenAccount)
         NotificationCenter.default.post(name: .bearAPITokenDidChange, object: nil)
+    }
+
+    // MARK: - Keychain Helpers
+
+    private func saveToKeychain(_ value: String, account: String) -> Bool {
+        guard let data = value.data(using: .utf8) else { return false }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: data
+        ]
+
+        SecItemDelete(query as CFDictionary)
+
+        let status = SecItemAdd(query as CFDictionary, nil)
+        return status == errSecSuccess
+    }
+
+    private func readFromKeychain(account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let string = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return string
+    }
+
+    private func deleteFromKeychain(account: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 }

@@ -318,7 +318,14 @@ struct SettingsView: View {
             panel.directoryURL = groupContainersURL
         }
 
-        panel.beginSheetModal(for: NSApp.keyWindow!) { result in
+        let targetWindow = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first
+        guard let window = targetWindow else {
+            errorMessage = "无法打开文件选择器"
+            showError = true
+            return
+        }
+
+        panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
                 if BearBookmarkManager.shared.saveBookmark(for: url) {
                     isAuthorized = true

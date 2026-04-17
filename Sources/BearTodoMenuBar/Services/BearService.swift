@@ -21,7 +21,13 @@ class BearService: BearServiceProtocol {
             return
         }
 
-        let url = URL(string: "bear://x-callback-url/todo?token=\(token.addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) ?? token)&show_window=no")!
+        let url = makeXCallbackURL(
+            action: "todo",
+            params: [
+                "token": token,
+                "show_window": "no"
+            ]
+        )
 
         XCallbackClient.shared.send(actionURL: url, timeout: 30) { [weak self] result in
             switch result {
@@ -39,7 +45,7 @@ class BearService: BearServiceProtocol {
                     return (id, title)
                 }
 
-                self?.fetchNoteContentsSequentially(
+                self?.fetchNoteContentsConcurrently(
                     noteInfos: noteInfos,
                     token: token,
                     completion: completion
@@ -51,52 +57,81 @@ class BearService: BearServiceProtocol {
         }
     }
 
-    private func fetchNoteContentsSequentially(
+    private func fetchNoteContentsConcurrently(
         noteInfos: [(id: String, title: String)],
         token: String,
         completion: @escaping (Result<[NoteTodos], BearServiceError>) -> Void
     ) {
+        guard !noteInfos.isEmpty else {
+            completion(.success([]))
+            return
+        }
+
         var result: [NoteTodos] = []
-        let encodedToken = token.addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) ?? token
+        let group = DispatchGroup()
+        let lock = NSLock()
 
-        func processNext(index: Int) {
-            guard index < noteInfos.count else {
-                completion(.success(result))
-                return
-            }
+        for info in noteInfos {
+            group.enter()
 
-            let info = noteInfos[index]
-            let url = URL(string: "bear://x-callback-url/open-note?id=\(info.id)&open_note=no&show_window=no&token=\(encodedToken)")!
+            let url = makeXCallbackURL(
+                action: "open-note",
+                params: [
+                    "id": info.id,
+                    "open_note": "no",
+                    "show_window": "no",
+                    "token": token
+                ]
+            )
 
             XCallbackClient.shared.send(actionURL: url, timeout: 30) { response in
+                defer { group.leave() }
+
                 switch response {
                 case .success(let params):
-                    guard let noteText = params["note"] else {
-                        processNext(index: index + 1)
-                        return
-                    }
+                    guard let noteText = params["note"] else { return }
 
                     let unchecked = TodoParser.parseUnchecked(from: noteText)
                     if !unchecked.isEmpty {
-                        let todos = unchecked.map {
-                            TodoItem(text: $0, noteId: info.id, noteTitle: info.title)
+                        let todos = unchecked.map { line in
+                            TodoItem(text: line.text, noteId: info.id, noteTitle: info.title, lineNumber: line.lineNumber)
                         }
-                        result.append(NoteTodos(id: info.id, title: info.title, todos: todos))
+                        let noteTodos = NoteTodos(id: info.id, title: info.title, todos: todos)
+                        lock.lock()
+                        result.append(noteTodos)
+                        lock.unlock()
                     }
-                    processNext(index: index + 1)
 
                 case .failure:
-                    processNext(index: index + 1)
+                    break
                 }
             }
         }
 
-        processNext(index: 0)
+        group.notify(queue: .main) {
+            completion(.success(result))
+        }
     }
 
     func openNote(id: String) {
-        guard let url = URL(string: "bear://x-callback-url/open-note?id=\(id)") else { return }
+        let url = makeXCallbackURL(action: "open-note", params: ["id": id])
         NSWorkspace.shared.open(url)
+    }
+
+    // MARK: - URL Construction
+
+    private func makeXCallbackURL(action: String, params: [String: String]) -> URL {
+        var components = URLComponents()
+        components.scheme = "bear"
+        components.host = "x-callback-url"
+        components.path = "/\(action)"
+
+        components.queryItems = params.map { key, value in
+            URLQueryItem(name: key, value: value.addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed))
+        }
+
+        // 若解析失败，fallback 到简单字符串拼接（理论上不会失败）
+        return components.url ?? URL(string: "bear://x-callback-url/\(action)")!
     }
 }
 

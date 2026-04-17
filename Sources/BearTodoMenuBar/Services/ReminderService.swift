@@ -46,52 +46,54 @@ final class ReminderService {
         let predicate = eventStore.predicateForReminders(in: [calendar])
 
         eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
-            guard let self = self else { return }
+            Task { @MainActor in
+                guard let self = self else { return }
 
-            let existingReminders = reminders ?? []
-            var remindersToSave: [EKReminder] = []
+                let existingReminders = reminders ?? []
+                var remindersToSave: [EKReminder] = []
 
-            for reminder in existingReminders {
-                guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
+                for reminder in existingReminders {
+                    guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
 
-                if bearKeys.contains(key) {
-                    if reminder.isCompleted {
-                        reminder.isCompleted = false
-                        remindersToSave.append(reminder)
-                    }
-                } else {
-                    if !reminder.isCompleted {
-                        reminder.isCompleted = true
-                        remindersToSave.append(reminder)
+                    if bearKeys.contains(key) {
+                        if reminder.isCompleted {
+                            reminder.isCompleted = false
+                            remindersToSave.append(reminder)
+                        }
+                    } else {
+                        if !reminder.isCompleted {
+                            reminder.isCompleted = true
+                            remindersToSave.append(reminder)
+                        }
                     }
                 }
-            }
 
-            let existingKeys = Set(existingReminders.compactMap { self.parseSyncKey(from: $0.notes) })
-            let newTodos = todos.filter { !existingKeys.contains(self.syncKey(for: $0)) }
+                let existingKeys = Set(existingReminders.compactMap { self.parseSyncKey(from: $0.notes) })
+                let newTodos = todos.filter { !existingKeys.contains(self.syncKey(for: $0)) }
 
-            for todo in newTodos {
-                let reminder = EKReminder(eventStore: self.eventStore)
-                reminder.title = todo.text
-                reminder.notes = self.notesString(for: todo)
-                reminder.calendar = calendar
-                reminder.isCompleted = false
-                remindersToSave.append(reminder)
-            }
-
-            for reminder in remindersToSave {
-                do {
-                    try self.eventStore.save(reminder, commit: false)
-                } catch {
-                    print("Failed to save reminder: \(error)")
+                for todo in newTodos {
+                    let reminder = EKReminder(eventStore: self.eventStore)
+                    reminder.title = todo.text
+                    reminder.notes = self.notesString(for: todo)
+                    reminder.calendar = calendar
+                    reminder.isCompleted = false
+                    remindersToSave.append(reminder)
                 }
-            }
 
-            if !remindersToSave.isEmpty {
-                do {
-                    try self.eventStore.commit()
-                } catch {
-                    print("Failed to commit reminders: \(error)")
+                for reminder in remindersToSave {
+                    do {
+                        try self.eventStore.save(reminder, commit: false)
+                    } catch {
+                        print("Failed to save reminder: \(error)")
+                    }
+                }
+
+                if !remindersToSave.isEmpty {
+                    do {
+                        try self.eventStore.commit()
+                    } catch {
+                        print("Failed to commit reminders: \(error)")
+                    }
                 }
             }
         }
@@ -136,7 +138,7 @@ final class ReminderService {
     }
 
     private func syncKey(for todo: TodoItem) -> String {
-        return todo.noteId + "|" + todo.text
+        return todo.noteId + "|" + String(todo.lineNumber)
     }
 
     private func notesString(for todo: TodoItem) -> String {

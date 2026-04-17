@@ -1,8 +1,13 @@
 import Foundation
 
+struct TodoLine {
+    let text: String
+    let lineNumber: Int
+}
+
 struct TodoParser {
-    static func parseUnchecked(from markdown: String) -> [String] {
-        let pattern = "^- \\[ \\] (.+)$"
+    static func parseUnchecked(from markdown: String) -> [TodoLine] {
+        let pattern = "^[-*] \\[ \\] (.+)$"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else {
             return []
         }
@@ -13,7 +18,10 @@ struct TodoParser {
         )
         return matches.compactMap { match in
             guard let range = Range(match.range(at: 1), in: markdown) else { return nil }
-            return String(markdown[range])
+            let lineRange = Range(match.range, in: markdown)!
+            let prefix = String(markdown[..<lineRange.lowerBound])
+            let lineNumber = prefix.components(separatedBy: .newlines).count
+            return TodoLine(text: String(markdown[range]), lineNumber: lineNumber)
         }
     }
 }

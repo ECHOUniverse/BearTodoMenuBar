@@ -5,6 +5,7 @@ struct TodoItem: Identifiable {
     let text: String
     let noteId: String
     let noteTitle: String
+    let lineNumber: Int
 }
 
 struct NoteTodos: Identifiable {

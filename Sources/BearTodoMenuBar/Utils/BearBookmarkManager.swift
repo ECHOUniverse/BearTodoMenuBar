@@ -47,6 +47,15 @@ class BearBookmarkManager {
                 bookmarkDataIsStale: &isStale
             )
             if isStale {
+                // 尝试重建 bookmark，失败则要求重新授权
+                if let freshData = try? url.bookmarkData(
+                    options: .withSecurityScope,
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                ) {
+                    UserDefaults.standard.set(freshData, forKey: bookmarkKey)
+                    return url
+                }
                 UserDefaults.standard.removeObject(forKey: bookmarkKey)
                 return nil
             }

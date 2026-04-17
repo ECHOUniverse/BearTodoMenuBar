@@ -28,7 +28,7 @@ final class XCallbackClient {
         }
 
         guard var components = URLComponents(url: actionURL, resolvingAgainstBaseURL: true) else {
-            completion(.failure(.invalidCallback))
+            complete(requestId: requestId, result: .failure(.invalidCallback))
             return
         }
 
@@ -38,7 +38,7 @@ final class XCallbackClient {
         components.queryItems = queryItems
 
         guard let url = components.url else {
-            completion(.failure(.invalidCallback))
+            complete(requestId: requestId, result: .failure(.invalidCallback))
             return
         }
 

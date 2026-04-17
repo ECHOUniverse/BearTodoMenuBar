@@ -156,31 +156,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         isRefreshing = true
         rebuildMenu()
 
-        Task {
-            await fetchTodos()
-        }
-    }
+        BearService.shared.fetchAllUncheckedTodos { [weak self] result in
+            guard let self = self else { return }
+            self.isRefreshing = false
+            self.lastRefreshDate = Date()
 
-    private func fetchTodos() async {
-        await withCheckedContinuation { continuation in
-            BearService.shared.fetchAllUncheckedTodos { [weak self] result in
-                DispatchQueue.main.async {
-                    self?.isRefreshing = false
-                    self?.lastRefreshDate = Date()
-
-                    switch result {
-                    case .success(let notes):
-                        self?.noteTodos = notes
-                        let allTodos = notes.flatMap { $0.todos }
-                        ReminderService.shared.sync(todos: allTodos)
-                    case .failure(let error):
-                        print("Refresh failed: \(error)")
-                    }
-
-                    self?.rebuildMenu()
-                    continuation.resume()
-                }
+            switch result {
+            case .success(let notes):
+                self.noteTodos = notes
+                let allTodos = notes.flatMap { $0.todos }
+                ReminderService.shared.sync(todos: allTodos)
+            case .failure(let error):
+                print("Refresh failed: \(error)")
             }
+
+            self.rebuildMenu()
         }
     }
 

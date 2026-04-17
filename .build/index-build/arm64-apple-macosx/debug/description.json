@@ -36,6 +36,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift"
         },
         {
@@ -45,6 +49,14 @@
         {
           "kind" : "file",
           "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/XCallbackClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift"
         },
         {
           "kind" : "file",
@@ -70,9 +82,12 @@
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearTodoMenuBarApp.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/MenuBarController.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/TodoItem.swift.o",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearService.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/TodoParser.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/XCallbackClient.swift.o",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager.swift.o",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/KeychainStorage.swift.o",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/index-build/arm64-apple-macosx/debug/BearTodoMenuBar.build/SettingsView.swift.o"
       ],
@@ -143,9 +158,12 @@
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/BearTodoMenuBarApp.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/MenuBarController.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Models/TodoItem.swift",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/TodoParser.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/XCallbackClient.swift",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift",
+        "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/KeychainStorage.swift",
         "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Views/SettingsView.swift"
       ],
@@ -167,9 +185,12 @@
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/BearTodoMenuBarApp.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/MenuBarController.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Models/TodoItem.swift",
+      "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/TodoParser.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/XCallbackClient.swift",
+      "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift",
+      "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/KeychainStorage.swift",
       "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Views/SettingsView.swift",
       "-I",
@@ -269,6 +290,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift"
         },
         {
@@ -278,6 +303,14 @@
         {
           "kind" : "file",
           "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/XCallbackClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift"
         },
         {
           "kind" : "file",

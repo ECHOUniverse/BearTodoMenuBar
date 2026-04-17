@@ -3,19 +3,29 @@ import Cocoa
 @MainActor
 final class MenuBarController: NSObject {
     private var statusItem: NSStatusItem?
-    private var timer: Timer?
     private var noteTodos: [NoteTodos] = []
     private var lastRefreshDate: Date?
     private var isRefreshing = false
+    private let fileWatcher = BearFileWatcher()
 
     var onOpenSettings: (() -> Void)?
 
     override init() {
         super.init()
         setupStatusItem()
-        startAutoRefresh()
+        setupFileWatcher()
         setupNotifications()
         refresh()
+    }
+
+    private func setupFileWatcher() {
+        fileWatcher.onChange = { [weak self] in
+            self?.refresh()
+        }
+        fileWatcher.onPermissionDenied = { [weak self] in
+            self?.rebuildMenu()
+        }
+        fileWatcher.startWatching()
     }
 
     private func setupNotifications() {
@@ -68,6 +78,13 @@ final class MenuBarController: NSObject {
             addFooterItems(to: menu)
             statusItem?.menu = menu
             return
+        }
+
+        if KeychainStorage.shared.hasToken && !BearBookmarkManager.shared.hasBookmark {
+            let authItem = NSMenuItem(title: "⚠️ 未授权数据库访问，自动刷新不可用", action: nil, keyEquivalent: "")
+            authItem.isEnabled = false
+            menu.addItem(authItem)
+            menu.addItem(NSMenuItem.separator())
         }
 
         let allTodos = noteTodos.flatMap { $0.todos }
@@ -175,13 +192,5 @@ final class MenuBarController: NSObject {
 
     @objc private func quit() {
         NSApp.terminate(nil)
-    }
-
-    private func startAutoRefresh() {
-        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.refresh()
-            }
-        }
     }
 }

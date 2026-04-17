@@ -23,6 +23,13 @@
     "swift-dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/TodoItem.swiftdeps",
     "diagnostics": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/TodoItem.dia"
   },
+  "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift": {
+    "dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher.d",
+    "object": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher.swift.o",
+    "swiftmodule": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher.swiftdeps",
+    "diagnostics": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearFileWatcher.dia"
+  },
   "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift": {
     "dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearService.d",
     "object": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearService.swift.o",
@@ -43,6 +50,20 @@
     "swiftmodule": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/XCallbackClient~partial.swiftmodule",
     "swift-dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/XCallbackClient.swiftdeps",
     "diagnostics": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/XCallbackClient.dia"
+  },
+  "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift": {
+    "dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager.d",
+    "object": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager.swift.o",
+    "swiftmodule": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager.swiftdeps",
+    "diagnostics": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/BearBookmarkManager.dia"
+  },
+  "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift": {
+    "dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce.d",
+    "object": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce.swift.o",
+    "swiftmodule": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce.swiftdeps",
+    "diagnostics": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/Debounce.dia"
   },
   "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/KeychainStorage.swift": {
     "dependencies": "/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/.build/arm64-apple-macosx/debug/BearTodoMenuBar.build/KeychainStorage.d",

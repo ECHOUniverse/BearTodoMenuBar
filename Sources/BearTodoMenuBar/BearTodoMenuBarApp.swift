@@ -18,10 +18,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        _ = BearBookmarkManager.shared.startAccessing()
+
         menuBarController = MenuBarController()
         menuBarController?.onOpenSettings = { [weak self] in
             self?.showSettingsWindow()
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        BearBookmarkManager.shared.stopAccessing()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -40,7 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         })
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 320),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false

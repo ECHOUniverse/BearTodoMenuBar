@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+*.xcodeproj
+*.xcworkspace
+
+# Xcode user data
+xcuserdata/
+DerivedData/
+
+# SwiftPM Xcode integration
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.swiftpm/xcode/xcuserdata/
+
+# Build artifacts
+build/
+*.app
+
+# Agent / IDE / tooling
+AGENTS.md
+.kilo/
+.vscode/

@@ -1,8 +1,11 @@
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/BearTodoMenuBarApp.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/MenuBarController.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Models/TodoItem.swift
+/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearFileWatcher.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/BearService.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/TodoParser.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Services/XCallbackClient.swift
+/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/BearBookmarkManager.swift
+/Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/Debounce.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Utils/KeychainStorage.swift
 /Volumes/WD-1T/00_Workspace/00_Active/CodeProject/Bear-checkbox-to-reminder/Sources/BearTodoMenuBar/Views/SettingsView.swift

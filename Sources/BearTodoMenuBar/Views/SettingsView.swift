@@ -1,10 +1,12 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @State private var token: String = ""
     @State private var showSuccess = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var isAuthorized: Bool = false
 
     var onClose: (() -> Void)?
 
@@ -22,6 +24,26 @@ struct SettingsView: View {
             SecureField("输入 API Token", text: $token)
                 .textFieldStyle(.roundedBorder)
 
+            Divider()
+
+            Text("数据库访问授权")
+                .font(.title3)
+                .fontWeight(.semibold)
+
+            HStack {
+                Image(systemName: isAuthorized ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundColor(isAuthorized ? .green : .orange)
+                Text(isAuthorized ? "已授权自动刷新" : "未授权，自动刷新不可用")
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+
+            Button(isAuthorized ? "重新授权" : "授权访问 Bear 数据库") {
+                requestBookmark()
+            }
+
+            Spacer()
+
             HStack {
                 Spacer()
 
@@ -38,9 +60,10 @@ struct SettingsView: View {
             }
         }
         .padding()
-        .frame(width: 400, height: 200)
+        .frame(width: 400, height: 320)
         .onAppear {
             token = KeychainStorage.shared.token ?? ""
+            isAuthorized = BearBookmarkManager.shared.hasBookmark
         }
         .overlay {
             if showSuccess {
@@ -56,6 +79,35 @@ struct SettingsView: View {
             Button("确定", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+    }
+
+    private func requestBookmark() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "授权访问"
+        panel.message = "请选择 Bear 的 Application Data 目录"
+
+        if let dbURL = BearFileWatcher.findBearDatabasePath() {
+            panel.directoryURL = dbURL.deletingLastPathComponent()
+        } else {
+            let groupContainersURL = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Group Containers")
+            panel.directoryURL = groupContainersURL
+        }
+
+        panel.beginSheetModal(for: NSApp.keyWindow!) { result in
+            if result == .OK, let url = panel.url {
+                if BearBookmarkManager.shared.saveBookmark(for: url) {
+                    isAuthorized = true
+                    NotificationCenter.default.post(name: .bearDatabaseAccessGranted, object: nil)
+                } else {
+                    errorMessage = "保存授权失败"
+                    showError = true
+                }
+            }
         }
     }
 

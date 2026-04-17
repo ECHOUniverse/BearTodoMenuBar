@@ -19,5 +19,9 @@ cp "${BUILD_DIR}/${APP_NAME}" "${APP_PATH}/Contents/MacOS/${APP_NAME}"
 # 4. Copy Info.plist
 cp "Sources/BearTodoMenuBar/Info.plist" "${APP_PATH}/Contents/Info.plist"
 
+# 5. Ad-hoc sign the .app bundle
+codesign --force --deep --sign - "${APP_PATH}"
+
 echo "✅ Built ${APP_PATH}"
-echo "👉 运行方式：open ${APP_PATH}"
+echo "👉 本地运行：open ${APP_PATH}"
+echo "👉 或执行：./scripts/run-local.sh"

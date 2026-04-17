@@ -7,6 +7,7 @@ extension Notification.Name {
 class KeychainStorage {
     static let shared = KeychainStorage()
     private let tokenKey = "bear_api_token"
+    private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let defaults = UserDefaults.standard
 
     var token: String? {
@@ -28,6 +29,15 @@ class KeychainStorage {
             return !t.isEmpty
         }
         return false
+    }
+
+    var isReminderSyncEnabled: Bool {
+        get {
+            return defaults.bool(forKey: reminderSyncKey)
+        }
+        set {
+            defaults.set(newValue, forKey: reminderSyncKey)
+        }
     }
 
     func clearToken() {

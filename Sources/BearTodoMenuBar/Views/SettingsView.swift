@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import EventKit
 
 struct SettingsView: View {
     @State private var token: String = ""
@@ -7,6 +8,8 @@ struct SettingsView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isAuthorized: Bool = false
+    @State private var isReminderSyncEnabled: Bool = false
+    @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
 
     var onClose: (() -> Void)?
 
@@ -23,6 +26,28 @@ struct SettingsView: View {
 
             SecureField("输入 API Token", text: $token)
                 .textFieldStyle(.roundedBorder)
+
+            Divider()
+
+            Text("同步到系统提醒事项")
+                .font(.title3)
+                .fontWeight(.semibold)
+
+            Toggle(isOn: $isReminderSyncEnabled) {
+                Text("启用同步")
+            }
+            .onChange(of: isReminderSyncEnabled) { enabled in
+                handleReminderSyncToggle(enabled)
+            }
+
+            HStack {
+                Image(systemName: reminderAccessIcon)
+                    .foregroundColor(reminderAccessColor)
+                Text(reminderAccessText)
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
 
             Divider()
 
@@ -60,10 +85,12 @@ struct SettingsView: View {
             }
         }
         .padding()
-        .frame(width: 400, height: 320)
+        .frame(width: 400, height: 400)
         .onAppear {
             token = KeychainStorage.shared.token ?? ""
             isAuthorized = BearBookmarkManager.shared.hasBookmark
+            isReminderSyncEnabled = KeychainStorage.shared.isReminderSyncEnabled
+            reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
         }
         .overlay {
             if showSuccess {
@@ -79,6 +106,60 @@ struct SettingsView: View {
             Button("确定", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+    }
+
+    private var reminderAccessIcon: String {
+        if reminderAccessStatus == .authorized {
+            return "checkmark.circle.fill"
+        } else if reminderAccessStatus == .denied || reminderAccessStatus == .restricted {
+            return "xmark.circle.fill"
+        } else {
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var reminderAccessColor: Color {
+        if reminderAccessStatus == .authorized {
+            return .green
+        } else if reminderAccessStatus == .denied || reminderAccessStatus == .restricted {
+            return .red
+        } else {
+            return .orange
+        }
+    }
+
+    private var reminderAccessText: String {
+        if reminderAccessStatus == .authorized {
+            return "已获取提醒事项权限"
+        } else if reminderAccessStatus == .denied {
+            return "权限已被拒绝，请前往系统设置开启"
+        } else if reminderAccessStatus == .restricted {
+            return "权限受限制，无法访问提醒事项"
+        } else if reminderAccessStatus == .notDetermined {
+            return "尚未请求权限"
+        } else {
+            return "未知状态"
+        }
+    }
+
+    private func handleReminderSyncToggle(_ enabled: Bool) {
+        KeychainStorage.shared.isReminderSyncEnabled = enabled
+        if enabled {
+            Task {
+                let granted = await ReminderService.shared.requestAccess()
+                await MainActor.run {
+                    reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
+                    if !granted {
+                        isReminderSyncEnabled = false
+                        KeychainStorage.shared.isReminderSyncEnabled = false
+                        errorMessage = "无法访问提醒事项，请检查系统权限设置"
+                        showError = true
+                    }
+                }
+            }
+        } else {
+            reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
         }
     }
 

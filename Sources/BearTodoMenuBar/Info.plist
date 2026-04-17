@@ -22,6 +22,8 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSRemindersUsageDescription</key>
+    <string>需要访问系统提醒事项，以便将 Bear 中的待办同步到 Reminders.app</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

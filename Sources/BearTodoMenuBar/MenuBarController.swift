@@ -1,7 +1,7 @@
 import Cocoa
 
 @MainActor
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private var noteTodos: [NoteTodos] = []
     private var lastRefreshDate: Date?
@@ -51,6 +51,7 @@ final class MenuBarController: NSObject {
 
     private func rebuildMenu() {
         let menu = NSMenu()
+        menu.delegate = self
 
         if isRefreshing {
             let refreshingItem = NSMenuItem(title: "⏳ 刷新中...", action: nil, keyEquivalent: "")
@@ -170,6 +171,8 @@ final class MenuBarController: NSObject {
                     switch result {
                     case .success(let notes):
                         self?.noteTodos = notes
+                        let allTodos = notes.flatMap { $0.todos }
+                        ReminderService.shared.sync(todos: allTodos)
                     case .failure(let error):
                         print("Refresh failed: \(error)")
                     }
@@ -192,5 +195,9 @@ final class MenuBarController: NSObject {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        rebuildMenu()
     }
 }

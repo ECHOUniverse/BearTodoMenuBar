@@ -18,14 +18,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         refresh()
     }
 
-    private var isBearFrontmost: Bool {
-        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "net.shinyfrog.bear"
-    }
+    private var bearIsFrontmost = false
 
     private func setupFileWatcher() {
         fileWatcher.onChange = { [weak self] in
             guard let self = self else { return }
-            guard !self.isBearFrontmost else { return }
+            guard !self.bearIsFrontmost else { return }
             self.refresh()
         }
         fileWatcher.onPermissionDenied = { [weak self] in
@@ -41,6 +39,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             name: .bearAPITokenDidChange,
             object: nil
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeApplicationDidChange),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+    }
+
+    @objc private func activeApplicationDidChange(_ notification: Notification) {
+        bearIsFrontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "net.shinyfrog.bear"
     }
 
     private func setupStatusItem() {

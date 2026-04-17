@@ -12,11 +12,19 @@ class KeychainStorage {
     private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let defaults = UserDefaults.standard
 
+    private var cachedToken: String?
+    private var didLoadToken = false
+
     var token: String? {
         get {
-            return readFromKeychain(account: tokenAccount)
+            if didLoadToken { return cachedToken }
+            cachedToken = readFromKeychain(account: tokenAccount)
+            didLoadToken = true
+            return cachedToken
         }
         set {
+            cachedToken = newValue
+            didLoadToken = true
             if let value = newValue, !value.isEmpty {
                 _ = saveToKeychain(value, account: tokenAccount)
             } else {
@@ -27,10 +35,8 @@ class KeychainStorage {
     }
 
     var hasToken: Bool {
-        if let t = token {
-            return !t.isEmpty
-        }
-        return false
+        guard let t = token else { return false }
+        return !t.isEmpty
     }
 
     var isReminderSyncEnabled: Bool {
@@ -43,6 +49,8 @@ class KeychainStorage {
     }
 
     func clearToken() {
+        cachedToken = nil
+        didLoadToken = true
         deleteFromKeychain(account: tokenAccount)
         NotificationCenter.default.post(name: .bearAPITokenDidChange, object: nil)
     }
@@ -56,7 +64,8 @@ class KeychainStorage {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         SecItemDelete(query as CFDictionary)

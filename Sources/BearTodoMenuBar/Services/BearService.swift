@@ -45,7 +45,7 @@ class BearService: BearServiceProtocol {
                     return (id, title)
                 }
 
-                self?.fetchNoteContentsConcurrently(
+                self?.fetchNoteContentsSerially(
                     noteInfos: noteInfos,
                     token: token,
                     completion: completion
@@ -57,7 +57,7 @@ class BearService: BearServiceProtocol {
         }
     }
 
-    private func fetchNoteContentsConcurrently(
+    private func fetchNoteContentsSerially(
         noteInfos: [(id: String, title: String)],
         token: String,
         completion: @escaping (Result<[NoteTodos], BearServiceError>) -> Void
@@ -68,11 +68,16 @@ class BearService: BearServiceProtocol {
         }
 
         var result: [NoteTodos] = []
-        let group = DispatchGroup()
-        let lock = NSLock()
+        var index = 0
 
-        for info in noteInfos {
-            group.enter()
+        func fetchNext() {
+            guard index < noteInfos.count else {
+                completion(.success(result))
+                return
+            }
+
+            let info = noteInfos[index]
+            index += 1
 
             let url = makeXCallbackURL(
                 action: "open-note",
@@ -85,32 +90,28 @@ class BearService: BearServiceProtocol {
             )
 
             XCallbackClient.shared.send(actionURL: url, timeout: 30) { response in
-                defer { group.leave() }
-
                 switch response {
                 case .success(let params):
-                    guard let noteText = params["note"] else { return }
-
-                    let unchecked = TodoParser.parseUnchecked(from: noteText)
-                    if !unchecked.isEmpty {
-                        let todos = unchecked.map { line in
-                            TodoItem(text: line.text, noteId: info.id, noteTitle: info.title, lineNumber: line.lineNumber)
+                    if let noteText = params["note"] {
+                        let unchecked = TodoParser.parseUnchecked(from: noteText)
+                        if !unchecked.isEmpty {
+                            let todos = unchecked.map { line in
+                                TodoItem(text: line.text, noteId: info.id, noteTitle: info.title, lineNumber: line.lineNumber)
+                            }
+                            result.append(NoteTodos(id: info.id, title: info.title, todos: todos))
                         }
-                        let noteTodos = NoteTodos(id: info.id, title: info.title, todos: todos)
-                        lock.lock()
-                        result.append(noteTodos)
-                        lock.unlock()
                     }
-
                 case .failure:
                     break
+                }
+
+                DispatchQueue.main.async {
+                    fetchNext()
                 }
             }
         }
 
-        group.notify(queue: .main) {
-            completion(.success(result))
-        }
+        fetchNext()
     }
 
     func openNote(id: String) {

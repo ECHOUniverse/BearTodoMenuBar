@@ -27,7 +27,7 @@ jobs:
       - name: Install swift-format
         run: |
           if ! command -v swift-format &> /dev/null; then
-            git clone --depth 1 --branch swift-5.9-branch https://github.com/apple/swift-format.git /tmp/swift-format
+            git clone --depth 1 --branch release/5.9 https://github.com/apple/swift-format.git /tmp/swift-format
             cd /tmp/swift-format
             swift build -c release
             cp .build/release/swift-format /usr/local/bin/

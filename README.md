@@ -1,17 +1,12 @@
 # Bear Todo Menu Bar
 
-<!-- TODO: 上传仓库后，将下方所有 `OWNER/REPO` 替换为实际的 GitHub 仓库路径，例如 `hanxu/BearTodoMenuBar` -->
-
 [<img src="https://img.shields.io/badge/Swift-5.9-orange.svg?style=flat-square">](#)
 [<img src="https://img.shields.io/badge/macOS-13.0+-blue.svg?style=flat-square">](#)
-[<img src="https://img.shields.io/github/license/OWNER/REPO.svg?style=flat-square">](https://github.com/OWNER/REPO/blob/main/LICENSE)
-[<img src="https://img.shields.io/github/v/release/OWNER/REPO.svg?style=flat-square">](https://github.com/OWNER/REPO/releases)
-[<img src="https://github.com/OWNER/REPO/actions/workflows/build.yml/badge.svg?style=flat-square">](https://github.com/OWNER/REPO/actions/workflows/build.yml)
+[<img src="https://img.shields.io/github/license/ECHOUniverse/BearTodoMenuBar.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/blob/main/LICENSE)
+[<img src="https://img.shields.io/github/v/release/ECHOUniverse/BearTodoMenuBar.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/releases)
+[<img src="https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml/badge.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml)
 
 一个 macOS 菜单栏小工具，自动读取 [Bear](https://bear.app/) 笔记中未勾选的待办事项，并展示在菜单栏中。支持点击待办直接跳转回 Bear 对应笔记。
-
-<!-- TODO: 在此添加应用截图或录屏 -->
-<!-- <img src="resources/screenshot.png" width="400" /> -->
 
 ## 功能
 
@@ -25,13 +20,13 @@
 
 ### 方式一：从 Release 下载（推荐）
 
-前往 [> Releases](https://github.com/OWNER/REPO/releases) 下载最新版本的 `BearTodoMenuBar.zip`，解压后将 `.app` 拖入 `/Applications` 即可。
+前往 [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) 下载最新版本的 `BearTodoMenuBar.zip`，解压后将 `.app` 拖入 `/Applications` 即可。
 
 ### 方式二：从源码构建
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/OWNER/REPO.git
+git clone https://github.com/ECHOUniverse/BearTodoMenuBar.git
 cd BearTodoMenuBar
 
 # 2. 构建
@@ -107,7 +102,7 @@ swift build
 
 ## 问题反馈
 
-遇到问题？请通过 [GitHub Issues](https://github.com/OWNER/REPO/issues) 提交反馈，并尽量提供以下信息：
+遇到问题？请通过 [GitHub Issues](https://github.com/ECHOUniverse/BearTodoMenuBar/issues) 提交反馈，并尽量提供以下信息：
 
 - macOS 版本
 - Bear 版本

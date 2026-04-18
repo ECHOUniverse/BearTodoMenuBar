@@ -23,6 +23,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Make build script executable
+        run: chmod +x ./scripts/build-app.sh
+
       - name: Build .app bundle
         run: ./scripts/build-app.sh
 

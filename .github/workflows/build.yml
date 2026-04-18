@@ -24,5 +24,8 @@ jobs:
       - name: Build
         run: swift build
 
+      - name: Make build script executable
+        run: chmod +x ./scripts/build-app.sh
+
       - name: Build .app bundle
         run: ./scripts/build-app.sh

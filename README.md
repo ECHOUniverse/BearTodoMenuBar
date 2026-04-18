@@ -1,6 +1,17 @@
 # Bear Todo Menu Bar
 
+<!-- TODO: 上传仓库后，将下方所有 `OWNER/REPO` 替换为实际的 GitHub 仓库路径，例如 `hanxu/BearTodoMenuBar` -->
+
+[<img src="https://img.shields.io/badge/Swift-5.9-orange.svg?style=flat-square">](#)
+[<img src="https://img.shields.io/badge/macOS-13.0+-blue.svg?style=flat-square">](#)
+[<img src="https://img.shields.io/github/license/OWNER/REPO.svg?style=flat-square">](https://github.com/OWNER/REPO/blob/main/LICENSE)
+[<img src="https://img.shields.io/github/v/release/OWNER/REPO.svg?style=flat-square">](https://github.com/OWNER/REPO/releases)
+[<img src="https://github.com/OWNER/REPO/actions/workflows/build.yml/badge.svg?style=flat-square">](https://github.com/OWNER/REPO/actions/workflows/build.yml)
+
 一个 macOS 菜单栏小工具，自动读取 [Bear](https://bear.app/) 笔记中未勾选的待办事项，并展示在菜单栏中。支持点击待办直接跳转回 Bear 对应笔记。
+
+<!-- TODO: 在此添加应用截图或录屏 -->
+<!-- <img src="resources/screenshot.png" width="400" /> -->
 
 ## 功能
 
@@ -10,48 +21,31 @@
 - 通过监视 Bear 数据库变化实现自动刷新（需授权数据库访问）
 - 通过 x-callback-url 与 Bear 通信，数据不落第三方服务器
 
-## 系统要求
+## 下载与安装
 
-- macOS 13.0+
-- Swift 5.9+
-- 已安装 [Bear](https://bear.app/) 应用
+### 方式一：从 Release 下载（推荐）
 
-## 快速开始
+前往 [> Releases](https://github.com/OWNER/REPO/releases) 下载最新版本的 `BearTodoMenuBar.zip`，解压后将 `.app` 拖入 `/Applications` 即可。
 
-### 1. 克隆项目
+### 方式二：从源码构建
 
 ```bash
-git clone <repo-url>
-cd Bear-checkbox-to-reminder
-```
+# 1. 克隆项目
+git clone https://github.com/OWNER/REPO.git
+cd BearTodoMenuBar
 
-### 2. 构建
-
-```bash
+# 2. 构建
 swift build
-```
 
-或打包成 `.app`：
-
-```bash
+# 3. 打包成 .app
 ./scripts/build-app.sh
-```
 
-### 3. 运行（本地试用）
-
-不安装到 `/Applications`，直接从构建目录启动：
-
-```bash
+# 4. 本地运行（不安装到 /Applications）
 ./scripts/run-local.sh
-```
 
-### 4. 安装到系统（长期使用）
-
-```bash
+# 5. 或安装到系统
 ./scripts/run.sh
 ```
-
-这会构建、复制到 `/Applications`、注册 URL Scheme 并启动应用。
 
 ## 首次配置
 
@@ -76,6 +70,14 @@ swift build
 
 授权成功后，应用会实时监控数据库变化并自动刷新菜单栏内容。
 
+## 系统要求
+
+| 项目 | 要求 |
+|------|------|
+| 操作系统 | macOS 13.0+ |
+| Swift | 5.9+ |
+| 依赖应用 | [Bear](https://bear.app/) |
+
 ## 项目结构
 
 ```
@@ -93,6 +95,7 @@ swift build
 │   ├── build-app.sh        # 构建 .app bundle
 │   ├── run-local.sh        # 本地运行（不安装）
 │   └── run.sh              # 构建并安装到 /Applications
+├── resources/              # 图标等资源
 └── README.md
 ```
 
@@ -102,6 +105,23 @@ swift build
 - 使用 `DispatchSourceFileSystemObject` 监听 `database.sqlite` 文件变化实现自动刷新
 - 使用 Security-Scoped Bookmark 持久化数据库目录访问权限
 
+## 问题反馈
+
+遇到问题？请通过 [GitHub Issues](https://github.com/OWNER/REPO/issues) 提交反馈，并尽量提供以下信息：
+
+- macOS 版本
+- Bear 版本
+- 应用版本号
+- 复现步骤
+
+## 贡献
+
+欢迎提交 Pull Request！在提交前请确保：
+
+1. 代码可以通过 `swift build` 编译
+2. 遵循现有的代码风格（可通过 `swift-format` 检查）
+3. 如有功能变更，请同步更新 README
+
 ## License
 
-MIT
+[MIT](LICENSE)

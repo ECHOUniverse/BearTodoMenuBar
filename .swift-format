@@ -1,0 +1,6 @@
+name: BearTodoMenuBar
+include:
+  - Sources
+indentation:
+  spaces: 4
+lineLength: 120

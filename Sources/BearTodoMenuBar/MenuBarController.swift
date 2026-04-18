@@ -4,6 +4,7 @@ import Cocoa
 final class MenuBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private var noteTodos: [NoteTodos] = []
+    private var completedNoteTodos: [NoteTodos] = []
     private var lastRefreshDate: Date?
     private var isRefreshing = false
     private let fileWatcher = BearFileWatcher()
@@ -103,7 +104,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         let allTodos = noteTodos.flatMap { $0.todos }
-        if allTodos.isEmpty {
+        let allCompletedTodos = completedNoteTodos.flatMap { $0.todos }
+
+        if allTodos.isEmpty && allCompletedTodos.isEmpty {
             let emptyItem = NSMenuItem(title: "暂无待办事项", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
@@ -111,34 +114,80 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             var displayedCount = 0
             let maxTodos = 20
 
-            for note in noteTodos {
-                guard displayedCount < maxTodos else { break }
-
-                let header = NSMenuItem(title: note.title, action: nil, keyEquivalent: "")
-                header.isEnabled = false
-                header.attributedTitle = NSAttributedString(
-                    string: note.title,
-                    attributes: [
-                        .font: NSFont.boldSystemFont(ofSize: 13),
-                        .foregroundColor: NSColor.secondaryLabelColor
-                    ]
-                )
-                menu.addItem(header)
-
-                for todo in note.todos {
+            // 待办区域
+            if !allTodos.isEmpty {
+                for note in noteTodos {
                     guard displayedCount < maxTodos else { break }
 
-                    let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
-                    todoItem.target = self
-                    todoItem.representedObject = todo.noteId
-                    todoItem.toolTip = "在 Bear 中打开"
-                    menu.addItem(todoItem)
-                    displayedCount += 1
+                    let header = NSMenuItem(title: note.title, action: nil, keyEquivalent: "")
+                    header.isEnabled = false
+                    header.attributedTitle = NSAttributedString(
+                        string: note.title,
+                        attributes: [
+                            .font: NSFont.boldSystemFont(ofSize: 13),
+                            .foregroundColor: NSColor.secondaryLabelColor
+                        ]
+                    )
+                    menu.addItem(header)
+
+                    for todo in note.todos {
+                        guard displayedCount < maxTodos else { break }
+
+                        let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
+                        todoItem.target = self
+                        todoItem.representedObject = todo.noteId
+                        todoItem.toolTip = "在 Bear 中打开"
+                        menu.addItem(todoItem)
+                        displayedCount += 1
+                    }
                 }
             }
 
-            if allTodos.count > maxTodos {
-                let moreItem = NSMenuItem(title: "更多...（共 \(allTodos.count) 条）", action: nil, keyEquivalent: "")
+            // 已完成区域
+            if KeychainStorage.shared.isReminderSyncEnabled && !allCompletedTodos.isEmpty {
+                menu.addItem(NSMenuItem.separator())
+
+                let sectionHeader = NSMenuItem(title: "已完成（来自提醒事项）", action: nil, keyEquivalent: "")
+                sectionHeader.isEnabled = false
+                sectionHeader.attributedTitle = NSAttributedString(
+                    string: "已完成（来自提醒事项）",
+                    attributes: [
+                        .font: NSFont.boldSystemFont(ofSize: 13),
+                        .foregroundColor: NSColor.tertiaryLabelColor
+                    ]
+                )
+                menu.addItem(sectionHeader)
+
+                for note in completedNoteTodos {
+                    guard displayedCount < maxTodos else { break }
+
+                    let header = NSMenuItem(title: note.title, action: nil, keyEquivalent: "")
+                    header.isEnabled = false
+                    header.attributedTitle = NSAttributedString(
+                        string: note.title,
+                        attributes: [
+                            .font: NSFont.boldSystemFont(ofSize: 13),
+                            .foregroundColor: NSColor.tertiaryLabelColor
+                        ]
+                    )
+                    menu.addItem(header)
+
+                    for todo in note.todos {
+                        guard displayedCount < maxTodos else { break }
+
+                        let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
+                        todoItem.target = self
+                        todoItem.representedObject = todo.noteId
+                        todoItem.toolTip = "在 Bear 中打开"
+                        menu.addItem(todoItem)
+                        displayedCount += 1
+                    }
+                }
+            }
+
+            let totalCount = allTodos.count + allCompletedTodos.count
+            if totalCount > maxTodos {
+                let moreItem = NSMenuItem(title: "更多...（共 \(totalCount) 条）", action: nil, keyEquivalent: "")
                 moreItem.isEnabled = false
                 menu.addItem(moreItem)
             }
@@ -177,14 +226,44 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
             switch result {
             case .success(let notes):
-                self.noteTodos = notes
                 let allTodos = notes.flatMap { $0.todos }
-                ReminderService.shared.sync(todos: allTodos)
+                ReminderService.shared.sync(todos: allTodos) { completedKeys in
+                    var pendingNotes: [NoteTodos] = []
+                    var completedNotes: [NoteTodos] = []
+
+                    for note in notes {
+                        var pendingTodos: [TodoItem] = []
+                        var completedTodos: [TodoItem] = []
+
+                        for todo in note.todos {
+                            let key = todo.noteId + "|" + String(todo.lineNumber)
+                            var updatedTodo = todo
+                            updatedTodo.isReminderCompleted = completedKeys.contains(key)
+                            if updatedTodo.isReminderCompleted {
+                                completedTodos.append(updatedTodo)
+                            } else {
+                                pendingTodos.append(updatedTodo)
+                            }
+                        }
+
+                        if !pendingTodos.isEmpty {
+                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: pendingTodos))
+                        }
+                        if !completedTodos.isEmpty {
+                            completedNotes.append(NoteTodos(id: note.id, title: note.title, todos: completedTodos))
+                        }
+                    }
+
+                    self.noteTodos = pendingNotes
+                    self.completedNoteTodos = completedNotes
+                    self.rebuildMenu()
+                }
             case .failure(let error):
                 print("Refresh failed: \(error)")
+                self.noteTodos = []
+                self.completedNoteTodos = []
+                self.rebuildMenu()
             }
-
-            self.rebuildMenu()
         }
     }
 

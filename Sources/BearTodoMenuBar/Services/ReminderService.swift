@@ -26,17 +26,22 @@ final class ReminderService {
         }
     }
 
-    func sync(todos: [TodoItem]) {
-        guard KeychainStorage.shared.isReminderSyncEnabled else { return }
+    func sync(todos: [TodoItem], completion: ((Set<String>) -> Void)? = nil) {
+        guard KeychainStorage.shared.isReminderSyncEnabled else {
+            completion?([])
+            return
+        }
 
         let status = EKEventStore.authorizationStatus(for: .reminder)
         guard status == .authorized else {
             print("Reminder access not granted, skipping sync")
+            completion?([])
             return
         }
 
         guard let calendar = fetchOrCreateCalendar() else {
             print("Failed to get or create Bear calendar")
+            completion?([])
             return
         }
 
@@ -47,16 +52,21 @@ final class ReminderService {
 
         eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
             Task { @MainActor in
-                guard let self = self else { return }
+                guard let self = self else {
+                    completion?([])
+                    return
+                }
 
                 let existingReminders = reminders ?? []
                 var remindersToSave: [EKReminder] = []
+                var completedKeys: Set<String> = []
 
                 for reminder in existingReminders {
                     guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
 
                     if bearKeys.contains(key) {
                         if reminder.isCompleted {
+                            completedKeys.insert(key)
                             reminder.isCompleted = false
                             remindersToSave.append(reminder)
                         }
@@ -95,6 +105,8 @@ final class ReminderService {
                         print("Failed to commit reminders: \(error)")
                     }
                 }
+
+                completion?(completedKeys)
             }
         }
     }

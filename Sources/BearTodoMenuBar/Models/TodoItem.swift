@@ -6,6 +6,7 @@ struct TodoItem: Identifiable {
     let noteId: String
     let noteTitle: String
     let lineNumber: Int
+    var isReminderCompleted: Bool = false
 }
 
 struct NoteTodos: Identifiable {

@@ -58,6 +58,7 @@ final class ReminderService {
         calendarIdentifier = calendar.calendarIdentifier
 
         let bearKeys = Set(todos.map { syncKey(for: $0) })
+        let todoMap = Dictionary(uniqueKeysWithValues: todos.map { (syncKey(for: $0), $0) })
         let predicate = eventStore.predicateForReminders(in: [calendar])
 
         eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
@@ -75,6 +76,10 @@ final class ReminderService {
                     guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
 
                     if bearKeys.contains(key) {
+                        if let todo = todoMap[key], reminder.title != todo.text {
+                            reminder.title = todo.text
+                            remindersToSave.append(reminder)
+                        }
                         if reminder.isCompleted {
                             completedKeys.insert(key)
                         }

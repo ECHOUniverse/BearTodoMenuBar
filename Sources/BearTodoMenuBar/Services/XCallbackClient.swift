@@ -5,7 +5,6 @@ enum XCallbackError: Error {
     case callbackFailed(String)
     case timeout
     case invalidCallback
-    case bearNotRunning
 }
 
 final class XCallbackClient {
@@ -42,15 +41,15 @@ final class XCallbackClient {
             return
         }
 
-        let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
-            self?.complete(requestId: requestId, result: .failure(.timeout))
-        }
+        DispatchQueue.main.async { [weak self] in
+            let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
+                self?.complete(requestId: requestId, result: .failure(.timeout))
+            }
 
-        queue.sync {
-            timeoutTimers[requestId] = timer
-        }
+            self?.queue.sync {
+                self?.timeoutTimers[requestId] = timer
+            }
 
-        DispatchQueue.main.async {
             let config = NSWorkspace.OpenConfiguration()
             config.activates = false
             NSWorkspace.shared.open(url, configuration: config, completionHandler: nil)

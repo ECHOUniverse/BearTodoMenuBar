@@ -18,7 +18,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        _ = BearBookmarkManager.shared.startAccessing()
+        let accessGranted = BearBookmarkManager.shared.startAccessing()
+        if !accessGranted {
+            print("Warning: Bear database security-scoped resource access not granted")
+        }
 
         menuBarController = MenuBarController()
         menuBarController?.onOpenSettings = { [weak self] in

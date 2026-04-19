@@ -58,14 +58,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             self,
             selector: #selector(eventStoreDidChange),
             name: .EKEventStoreChanged,
-            object: ReminderService.shared.eventStore
+            object: nil
         )
     }
 
     @objc private func activeApplicationDidChange(_ notification: Notification) {
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let wasRemindersFrontmost = remindersIsFrontmost
         bearIsFrontmost = frontmost == "net.shinyfrog.bear"
         remindersIsFrontmost = frontmost == "com.apple.reminders"
+
+        if wasRemindersFrontmost && !remindersIsFrontmost {
+            remindersDebounce.debounce { [weak self] in
+                self?.refresh()
+            }
+        }
     }
 
     @objc private func eventStoreDidChange(_ notification: Notification) {
@@ -136,13 +143,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
         } else {
-            var displayedCount = 0
-            let maxTodos = 20
+            let maxPending = 15
+            let maxCompleted = 5
+            var pendingDisplayed = 0
+            var completedDisplayed = 0
 
             // 待办区域
             if !allTodos.isEmpty {
                 for note in noteTodos {
-                    guard displayedCount < maxTodos else { break }
+                    guard pendingDisplayed < maxPending else { break }
 
                     let header = NSMenuItem(title: note.title, action: nil, keyEquivalent: "")
                     header.isEnabled = false
@@ -156,7 +165,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     menu.addItem(header)
 
                     for todo in note.todos {
-                        guard displayedCount < maxTodos else { break }
+                        guard pendingDisplayed < maxPending else { break }
 
                         let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
                         todoItem.target = self
@@ -169,7 +178,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                             )
                         }
                         menu.addItem(todoItem)
-                        displayedCount += 1
+                        pendingDisplayed += 1
                     }
                 }
             }
@@ -190,7 +199,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 menu.addItem(sectionHeader)
 
                 for note in completedNoteTodos {
-                    guard displayedCount < maxTodos else { break }
+                    guard completedDisplayed < maxCompleted else { break }
 
                     let header = NSMenuItem(title: note.title, action: nil, keyEquivalent: "")
                     header.isEnabled = false
@@ -204,21 +213,23 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     menu.addItem(header)
 
                     for todo in note.todos {
-                        guard displayedCount < maxTodos else { break }
+                        guard completedDisplayed < maxCompleted else { break }
 
                         let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
                         todoItem.target = self
                         todoItem.representedObject = todo.noteId
                         todoItem.toolTip = "在 Bear 中打开"
                         menu.addItem(todoItem)
-                        displayedCount += 1
+                        completedDisplayed += 1
                     }
                 }
             }
 
-            let totalCount = allTodos.count + allCompletedTodos.count
-            if totalCount > maxTodos {
-                let moreItem = NSMenuItem(title: "更多...（共 \(totalCount) 条）", action: nil, keyEquivalent: "")
+            let pendingRemaining = allTodos.count - pendingDisplayed
+            let completedRemaining = allCompletedTodos.count - completedDisplayed
+            if pendingRemaining > 0 || completedRemaining > 0 {
+                let total = pendingRemaining + completedRemaining
+                let moreItem = NSMenuItem(title: "更多...（还有 \(total) 条）", action: nil, keyEquivalent: "")
                 moreItem.isEnabled = false
                 menu.addItem(moreItem)
             }
@@ -260,24 +271,33 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 let allTodos = notes.flatMap { $0.todos }
                 ReminderService.shared.sync(todos: allTodos) { completedKeys in
                     var pendingNotes: [NoteTodos] = []
+                    var completedNotes: [NoteTodos] = []
 
                     for note in notes {
-                        var displayTodos: [TodoItem] = []
+                        var pendingTodos: [TodoItem] = []
+                        var completedTodos: [TodoItem] = []
 
                         for todo in note.todos {
                             let key = todo.noteId + "|" + String(todo.lineNumber)
                             var updatedTodo = todo
                             updatedTodo.isReminderCompleted = completedKeys.contains(key)
-                            displayTodos.append(updatedTodo)
+                            if updatedTodo.isReminderCompleted {
+                                completedTodos.append(updatedTodo)
+                            } else {
+                                pendingTodos.append(updatedTodo)
+                            }
                         }
 
-                        if !displayTodos.isEmpty {
-                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: displayTodos))
+                        if !pendingTodos.isEmpty {
+                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: pendingTodos))
+                        }
+                        if !completedTodos.isEmpty {
+                            completedNotes.append(NoteTodos(id: note.id, title: note.title, todos: completedTodos))
                         }
                     }
 
                     self.noteTodos = pendingNotes
-                    self.completedNoteTodos = []
+                    self.completedNoteTodos = completedNotes
                     self.rebuildMenu()
                 }
             case .failure(let error):

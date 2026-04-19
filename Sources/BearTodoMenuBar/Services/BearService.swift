@@ -101,8 +101,8 @@ class BearService: BearServiceProtocol {
                             result.append(NoteTodos(id: info.id, title: info.title, todos: todos))
                         }
                     }
-                case .failure:
-                    break
+                case .failure(let error):
+                    print("Failed to fetch note \(info.id): \(error)")
                 }
 
                 DispatchQueue.main.async {

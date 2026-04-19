@@ -1,4 +1,5 @@
 import Cocoa
+import EventKit
 
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
@@ -8,6 +9,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var lastRefreshDate: Date?
     private var isRefreshing = false
     private let fileWatcher = BearFileWatcher()
+    private let remindersDebounce = Debounce(delay: 3.0)
 
     var onOpenSettings: (() -> Void)?
 
@@ -19,7 +21,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         refresh()
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+    }
+
     private var bearIsFrontmost = false
+    private var remindersIsFrontmost = false
 
     private func setupFileWatcher() {
         fileWatcher.onChange = { [weak self] in
@@ -46,10 +54,27 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(eventStoreDidChange),
+            name: .EKEventStoreChanged,
+            object: ReminderService.shared.eventStore
+        )
     }
 
     @objc private func activeApplicationDidChange(_ notification: Notification) {
-        bearIsFrontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "net.shinyfrog.bear"
+        let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        bearIsFrontmost = frontmost == "net.shinyfrog.bear"
+        remindersIsFrontmost = frontmost == "com.apple.reminders"
+    }
+
+    @objc private func eventStoreDidChange(_ notification: Notification) {
+        guard KeychainStorage.shared.isReminderSyncEnabled else { return }
+        remindersDebounce.debounce { [weak self] in
+            guard let self = self else { return }
+            guard !self.remindersIsFrontmost else { return }
+            self.refresh()
+        }
     }
 
     private func setupStatusItem() {
@@ -137,6 +162,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         todoItem.target = self
                         todoItem.representedObject = todo.noteId
                         todoItem.toolTip = "在 Bear 中打开"
+                        if todo.isReminderCompleted {
+                            todoItem.attributedTitle = NSAttributedString(
+                                string: "  \(todo.text)",
+                                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
+                            )
+                        }
                         menu.addItem(todoItem)
                         displayedCount += 1
                     }
@@ -229,33 +260,24 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 let allTodos = notes.flatMap { $0.todos }
                 ReminderService.shared.sync(todos: allTodos) { completedKeys in
                     var pendingNotes: [NoteTodos] = []
-                    var completedNotes: [NoteTodos] = []
 
                     for note in notes {
-                        var pendingTodos: [TodoItem] = []
-                        var completedTodos: [TodoItem] = []
+                        var displayTodos: [TodoItem] = []
 
                         for todo in note.todos {
                             let key = todo.noteId + "|" + String(todo.lineNumber)
                             var updatedTodo = todo
                             updatedTodo.isReminderCompleted = completedKeys.contains(key)
-                            if updatedTodo.isReminderCompleted {
-                                completedTodos.append(updatedTodo)
-                            } else {
-                                pendingTodos.append(updatedTodo)
-                            }
+                            displayTodos.append(updatedTodo)
                         }
 
-                        if !pendingTodos.isEmpty {
-                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: pendingTodos))
-                        }
-                        if !completedTodos.isEmpty {
-                            completedNotes.append(NoteTodos(id: note.id, title: note.title, todos: completedTodos))
+                        if !displayTodos.isEmpty {
+                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: displayTodos))
                         }
                     }
 
                     self.noteTodos = pendingNotes
-                    self.completedNoteTodos = completedNotes
+                    self.completedNoteTodos = []
                     self.rebuildMenu()
                 }
             case .failure(let error):

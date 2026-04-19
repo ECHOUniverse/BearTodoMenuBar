@@ -243,7 +243,12 @@ struct SettingsView: View {
         switch reminderAccessStatus {
         case .authorized: return "checkmark"
         case .denied, .restricted: return "xmark"
-        default: return "exclamationmark"
+        case .notDetermined: return "exclamationmark"
+        default:
+            if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
+                return "checkmark"
+            }
+            return "exclamationmark"
         }
     }
 
@@ -251,7 +256,12 @@ struct SettingsView: View {
         switch reminderAccessStatus {
         case .authorized: return .green
         case .denied, .restricted: return .red
-        default: return .orange
+        case .notDetermined: return .orange
+        default:
+            if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
+                return .green
+            }
+            return .orange
         }
     }
 
@@ -261,7 +271,11 @@ struct SettingsView: View {
         case .denied: return "已拒绝"
         case .restricted: return "受限制"
         case .notDetermined: return "待授权"
-        default: return "未知"
+        default:
+            if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
+                return "已允许"
+            }
+            return "未知"
         }
     }
 
@@ -276,6 +290,9 @@ struct SettingsView: View {
         case .notDetermined:
             return "开启开关后将请求提醒事项权限。"
         default:
+            if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
+                return "提醒事项权限已获取，待办将自动同步到系统提醒事项。"
+            }
             return ""
         }
     }

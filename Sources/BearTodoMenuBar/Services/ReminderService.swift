@@ -5,7 +5,7 @@ import AppKit
 @MainActor
 final class ReminderService {
     static let shared = ReminderService()
-    private let eventStore = EKEventStore()
+    let eventStore = EKEventStore()
     private let calendarTitle = "Bear"
     private let notesPrefix = "bear-todo-sync:"
 
@@ -13,15 +13,25 @@ final class ReminderService {
 
     func requestAccess() async -> Bool {
         let status = EKEventStore.authorizationStatus(for: .reminder)
-        if status == .authorized {
+        if isAuthorizedStatus(status) {
             return true
         }
-        return await withCheckedContinuation { continuation in
-            eventStore.requestAccess(to: .reminder) { granted, error in
-                if let error = error {
-                    print("Request reminder access failed: \(error)")
+
+        if #available(macOS 14.0, *) {
+            do {
+                return try await eventStore.requestFullAccessToReminders()
+            } catch {
+                print("Request full reminder access failed: \(error)")
+                return false
+            }
+        } else {
+            return await withCheckedContinuation { continuation in
+                eventStore.requestAccess(to: .reminder) { granted, error in
+                    if let error = error {
+                        print("Request reminder access failed: \(error)")
+                    }
+                    continuation.resume(returning: granted)
                 }
-                continuation.resume(returning: granted)
             }
         }
     }
@@ -33,7 +43,7 @@ final class ReminderService {
         }
 
         let status = EKEventStore.authorizationStatus(for: .reminder)
-        guard status == .authorized else {
+        guard isAuthorizedStatus(status) else {
             print("Reminder access not granted, skipping sync")
             completion?([])
             return
@@ -67,8 +77,6 @@ final class ReminderService {
                     if bearKeys.contains(key) {
                         if reminder.isCompleted {
                             completedKeys.insert(key)
-                            reminder.isCompleted = false
-                            remindersToSave.append(reminder)
                         }
                     } else {
                         if !reminder.isCompleted {
@@ -109,6 +117,14 @@ final class ReminderService {
                 completion?(completedKeys)
             }
         }
+    }
+
+    private func isAuthorizedStatus(_ status: EKAuthorizationStatus) -> Bool {
+        if status == .authorized { return true }
+        if #available(macOS 14.0, *) {
+            return status == .fullAccess
+        }
+        return false
     }
 
     private func fetchOrCreateCalendar() -> EKCalendar? {

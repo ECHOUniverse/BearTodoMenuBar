@@ -31,11 +31,11 @@ jobs:
 
       - name: Package .app into zip
         run: |
-          cd .build/debug
+          cd .build/release
           zip -r BearTodoMenuBar.zip BearTodoMenuBar.app
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: .build/debug/BearTodoMenuBar.zip
+          files: .build/release/BearTodoMenuBar.zip
           generate_release_notes: true

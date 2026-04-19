@@ -2,11 +2,11 @@
 set -e
 
 APP_NAME="BearTodoMenuBar"
-BUILD_DIR=".build/debug"
+BUILD_DIR=".build/release"
 APP_PATH="${BUILD_DIR}/${APP_NAME}.app"
 
 # 1. Build binary
-swift build
+swift build -c release
 
 # 2. Create .app bundle structure
 rm -rf "${APP_PATH}"

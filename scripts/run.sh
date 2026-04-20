@@ -7,7 +7,7 @@ echo "==> Building .app..."
 ./scripts/build-app.sh
 
 echo "==> Installing to /Applications..."
-cp -R .build/debug/BearTodoMenuBar.app /Applications/
+cp -R .build/release/BearTodoMenuBar.app /Applications/
 
 echo "==> Registering URL scheme..."
 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/BearTodoMenuBar.app

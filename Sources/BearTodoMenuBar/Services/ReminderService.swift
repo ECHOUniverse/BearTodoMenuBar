@@ -100,18 +100,38 @@ final class ReminderService {
                     reminder.notes = self.notesString(for: todo)
                     reminder.calendar = calendar
                     reminder.isCompleted = false
+
+                    let gregorian = Calendar(identifier: .gregorian)
+                    if let tomorrow = gregorian.date(byAdding: .day, value: 1, to: Date()) {
+                        var components = gregorian.dateComponents([.year, .month, .day], from: tomorrow)
+                        components.calendar = gregorian
+                        reminder.startDateComponents = components
+                        reminder.dueDateComponents = components
+                    }
+
                     remindersToSave.append(reminder)
                 }
 
-                for reminder in remindersToSave {
+                let newReminders = remindersToSave.filter { $0.calendarItemIdentifier.isEmpty }
+                let modifiedReminders = remindersToSave.filter { !$0.calendarItemIdentifier.isEmpty }
+
+                for reminder in newReminders {
                     do {
-                        try self.eventStore.save(reminder, commit: false)
+                        try self.eventStore.save(reminder, commit: true)
                     } catch {
-                        print("Failed to save reminder: \(error)")
+                        print("Failed to save new reminder: \(error)")
                     }
                 }
 
-                if !remindersToSave.isEmpty {
+                for reminder in modifiedReminders {
+                    do {
+                        try self.eventStore.save(reminder, commit: false)
+                    } catch {
+                        print("Failed to save existing reminder: \(error)")
+                    }
+                }
+
+                if !modifiedReminders.isEmpty {
                     do {
                         try self.eventStore.commit()
                     } catch {

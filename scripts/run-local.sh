@@ -11,6 +11,6 @@ killall BearTodoMenuBar 2>/dev/null || true
 sleep 1
 
 echo "==> Launching app from build directory..."
-open .build/debug/BearTodoMenuBar.app
+open .build/release/BearTodoMenuBar.app
 
 echo "✅ Done. The app is running."

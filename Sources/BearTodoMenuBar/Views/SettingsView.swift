@@ -49,6 +49,8 @@ struct StatusPill: View {
 // MARK: - Settings View
 
 struct SettingsView: View {
+    @ObservedObject var l10n = L10n.shared
+    @AppStorage("app_language") var language: Language = .auto
     @State private var token: String = ""
     @State private var showSuccess = false
     @State private var showError = false
@@ -65,10 +67,10 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // Header
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("设置")
+                        Text(L10n.settings)
                             .font(.title)
                             .fontWeight(.bold)
-                        Text("配置 Bear 待办同步选项")
+                        Text(L10n.settingsDescription)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -82,16 +84,16 @@ struct SettingsView: View {
                                 Image(systemName: "key.fill")
                                     .font(.title3)
                                     .foregroundStyle(.secondary)
-                                Text("Bear API Token")
+                                Text(L10n.bearApiToken)
                                     .font(.headline)
                             }
 
-                            Text("在 Bear 应用中选择 Help → API Token 获取你的个人 Token。")
+                            Text(L10n.apiTokenHint)
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            SecureField("输入 API Token", text: $token)
+                            SecureField(L10n.apiTokenPlaceholder, text: $token)
                                 .textFieldStyle(.plain)
                                 .padding(10)
                                 .background(
@@ -112,7 +114,7 @@ struct SettingsView: View {
                                 Image(systemName: "bell.fill")
                                     .font(.title3)
                                     .foregroundStyle(.secondary)
-                                Text("系统提醒事项")
+                                Text(L10n.systemReminders)
                                     .font(.headline)
                                 Spacer()
                                 StatusPill(
@@ -123,7 +125,7 @@ struct SettingsView: View {
                             }
 
                             Toggle(isOn: $isReminderSyncEnabled) {
-                                Text("启用同步")
+                                Text(L10n.enableSync)
                                     .font(.callout)
                             }
                             .toggleStyle(.switch)
@@ -147,19 +149,19 @@ struct SettingsView: View {
                                 Image(systemName: "archivebox.fill")
                                     .font(.title3)
                                     .foregroundStyle(.secondary)
-                                Text("数据库访问授权")
+                                Text(L10n.databaseAccess)
                                     .font(.headline)
                                 Spacer()
                                 StatusPill(
                                     icon: isAuthorized ? "checkmark" : "exclamationmark",
-                                    text: isAuthorized ? "已授权" : "未授权",
+                                    text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
                                     color: isAuthorized ? .green : .orange
                                 )
                             }
 
                             Text(isAuthorized
-                                 ? "已授权访问 Bear 数据库，自动刷新可用。"
-                                 : "未授权访问 Bear 数据库，自动刷新功能不可用。")
+                                 ? L10n.accessGranted
+                                 : L10n.accessNotGranted)
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -169,7 +171,7 @@ struct SettingsView: View {
                             } label: {
                                 HStack(spacing: 6) {
                                     Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
-                                    Text(isAuthorized ? "重新授权" : "授权访问")
+                                    Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
                                 }
                                 .font(.callout)
                                 .fontWeight(.medium)
@@ -179,18 +181,38 @@ struct SettingsView: View {
                         }
                     }
 
+                    // MARK: Language Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "globe")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text(L10n.language)
+                                    .font(.headline)
+                            }
+
+                            Picker("", selection: $language) {
+                                ForEach(Language.allCases, id: \.self) { lang in
+                                    Text(lang.displayName).tag(lang)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+
                     Spacer(minLength: 8)
 
                     // Bottom Actions
                     HStack {
                         Spacer()
 
-                        Button("取消") {
+                        Button(L10n.cancel) {
                             onClose?()
                         }
                         .keyboardShortcut(.cancelAction)
 
-                        Button("保存") {
+                        Button(L10n.save) {
                             saveToken()
                         }
                         .keyboardShortcut(.defaultAction)
@@ -204,7 +226,7 @@ struct SettingsView: View {
             if showSuccess {
                 VStack {
                     Spacer()
-                    Text("保存成功")
+                    Text(L10n.saveSuccess)
                         .font(.callout)
                         .fontWeight(.medium)
                         .padding(.horizontal, 20)
@@ -230,8 +252,8 @@ struct SettingsView: View {
             isReminderSyncEnabled = KeychainStorage.shared.isReminderSyncEnabled
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
         }
-        .alert("保存失败", isPresented: $showError) {
-            Button("确定", role: .cancel) {}
+        .alert(L10n.saveFailed, isPresented: $showError) {
+            Button(L10n.ok, role: .cancel) {}
         } message: {
             Text(errorMessage)
         }
@@ -267,31 +289,31 @@ struct SettingsView: View {
 
     private var reminderAccessTextShort: String {
         switch reminderAccessStatus {
-        case .authorized: return "已允许"
-        case .denied: return "已拒绝"
-        case .restricted: return "受限制"
-        case .notDetermined: return "待授权"
+        case .authorized: return L10n.reminderAccessAllowed
+        case .denied: return L10n.reminderAccessDeniedText
+        case .restricted: return L10n.reminderAccessRestricted
+        case .notDetermined: return L10n.reminderAccessPending
         default:
             if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
-                return "已允许"
+                return L10n.reminderAccessAllowed
             }
-            return "未知"
+            return L10n.reminderAccessUnknown
         }
     }
 
     private var reminderAccessDescription: String {
         switch reminderAccessStatus {
         case .authorized:
-            return "提醒事项权限已获取，待办将自动同步到系统提醒事项。"
+            return L10n.reminderAccessGrantedDesc
         case .denied:
-            return "权限已被拒绝，请前往系统设置 → 隐私与安全性 → 提醒事项中开启。"
+            return L10n.reminderAccessDeniedDesc
         case .restricted:
-            return "权限受限制，无法访问提醒事项。"
+            return L10n.reminderAccessRestrictedDesc
         case .notDetermined:
-            return "开启开关后将请求提醒事项权限。"
+            return L10n.reminderAccessPendingDesc
         default:
             if #available(macOS 14.0, *), reminderAccessStatus == .fullAccess {
-                return "提醒事项权限已获取，待办将自动同步到系统提醒事项。"
+                return L10n.reminderAccessGrantedDesc
             }
             return ""
         }
@@ -309,7 +331,7 @@ struct SettingsView: View {
                     if !granted {
                         isReminderSyncEnabled = false
                         KeychainStorage.shared.isReminderSyncEnabled = false
-                        errorMessage = "无法访问提醒事项，请检查系统权限设置"
+                        errorMessage = L10n.reminderAccessDenied
                         showError = true
                     }
                 }
@@ -324,8 +346,8 @@ struct SettingsView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "授权访问"
-        panel.message = "请选择 Bear 的 Application Data 目录"
+        panel.prompt = L10n.authorizePrompt
+        panel.message = L10n.authorizeMessage
 
         if let dbURL = BearFileWatcher.findBearDatabasePath() {
             panel.directoryURL = dbURL.deletingLastPathComponent()
@@ -337,7 +359,7 @@ struct SettingsView: View {
 
         let targetWindow = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first
         guard let window = targetWindow else {
-            errorMessage = "无法打开文件选择器"
+            errorMessage = L10n.cannotOpenPanel
             showError = true
             return
         }
@@ -348,7 +370,7 @@ struct SettingsView: View {
                     isAuthorized = true
                     NotificationCenter.default.post(name: .bearDatabaseAccessGranted, object: nil)
                 } else {
-                    errorMessage = "保存授权失败"
+                    errorMessage = L10n.saveAuthFailed
                     showError = true
                 }
             }
@@ -357,7 +379,7 @@ struct SettingsView: View {
 
     private func saveToken() {
         guard !token.isEmpty else {
-            errorMessage = "Token 不能为空"
+            errorMessage = L10n.tokenEmpty
             showError = true
             return
         }

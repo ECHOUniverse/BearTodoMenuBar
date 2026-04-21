@@ -54,7 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "设置"
+        window.title = L10n.settings
         window.contentView = NSHostingView(rootView: contentView)
         window.center()
         window.isReleasedWhenClosed = false

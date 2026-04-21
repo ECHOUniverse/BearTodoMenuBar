@@ -60,6 +60,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             name: .EKEventStoreChanged,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(languageDidChange),
+            name: .appLanguageDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func languageDidChange() {
+        rebuildMenu()
     }
 
     @objc private func activeApplicationDidChange(_ notification: Notification) {
@@ -101,18 +111,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
 
         if isRefreshing {
-            let refreshingItem = NSMenuItem(title: "⏳ 刷新中...", action: nil, keyEquivalent: "")
+            let refreshingItem = NSMenuItem(title: L10n.refreshing, action: nil, keyEquivalent: "")
             refreshingItem.isEnabled = false
             menu.addItem(refreshingItem)
         } else if let lastRefresh = lastRefreshDate {
             let formatter = RelativeDateTimeFormatter()
             formatter.unitsStyle = .short
             let timeString = formatter.localizedString(for: lastRefresh, relativeTo: Date())
-            let refreshItem = NSMenuItem(title: "上次更新：\(timeString)", action: #selector(refresh), keyEquivalent: "r")
+            let refreshItem = NSMenuItem(title: L10n.lastUpdate(timeString), action: #selector(refresh), keyEquivalent: "r")
             refreshItem.target = self
             menu.addItem(refreshItem)
         } else {
-            let refreshItem = NSMenuItem(title: "立即刷新", action: #selector(refresh), keyEquivalent: "r")
+            let refreshItem = NSMenuItem(title: L10n.refreshNow, action: #selector(refresh), keyEquivalent: "r")
             refreshItem.target = self
             menu.addItem(refreshItem)
         }
@@ -120,7 +130,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(NSMenuItem.separator())
 
         guard KeychainStorage.shared.hasToken else {
-            let tokenItem = NSMenuItem(title: "请先配置 API Token", action: #selector(openSettings), keyEquivalent: "")
+            let tokenItem = NSMenuItem(title: L10n.configureTokenFirst, action: #selector(openSettings), keyEquivalent: "")
             tokenItem.target = self
             menu.addItem(tokenItem)
             addFooterItems(to: menu)
@@ -129,7 +139,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         if KeychainStorage.shared.hasToken && !BearBookmarkManager.shared.hasBookmark {
-            let authItem = NSMenuItem(title: "⚠️ 未授权数据库访问，自动刷新不可用", action: nil, keyEquivalent: "")
+            let authItem = NSMenuItem(title: L10n.noDatabaseAuth, action: nil, keyEquivalent: "")
             authItem.isEnabled = false
             menu.addItem(authItem)
             menu.addItem(NSMenuItem.separator())
@@ -139,7 +149,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let allCompletedTodos = completedNoteTodos.flatMap { $0.todos }
 
         if allTodos.isEmpty && allCompletedTodos.isEmpty {
-            let emptyItem = NSMenuItem(title: "暂无待办事项", action: nil, keyEquivalent: "")
+            let emptyItem = NSMenuItem(title: L10n.noTodos, action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
         } else {
@@ -170,7 +180,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
                         todoItem.target = self
                         todoItem.representedObject = todo.noteId
-                        todoItem.toolTip = "在 Bear 中打开"
+                        todoItem.toolTip = L10n.openInBear
                         if todo.isReminderCompleted {
                             todoItem.attributedTitle = NSAttributedString(
                                 string: "  \(todo.text)",
@@ -191,10 +201,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             if KeychainStorage.shared.isReminderSyncEnabled && !allCompletedTodos.isEmpty {
                 menu.addItem(NSMenuItem.separator())
 
-                let sectionHeader = NSMenuItem(title: "已完成（来自提醒事项）", action: nil, keyEquivalent: "")
+                let sectionHeader = NSMenuItem(title: L10n.completedSection, action: nil, keyEquivalent: "")
                 sectionHeader.isEnabled = false
                 sectionHeader.attributedTitle = NSAttributedString(
-                    string: "已完成（来自提醒事项）",
+                    string: L10n.completedSection,
                     attributes: [
                         .font: NSFont.boldSystemFont(ofSize: 13),
                         .foregroundColor: NSColor.tertiaryLabelColor
@@ -222,7 +232,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
                         todoItem.target = self
                         todoItem.representedObject = todo.noteId
-                        todoItem.toolTip = "在 Bear 中打开"
+                        todoItem.toolTip = L10n.openInBear
                         todoItem.attributedTitle = NSAttributedString(
                             string: "  \(todo.text)",
                             attributes: [
@@ -241,7 +251,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             let completedRemaining = allCompletedTodos.count - completedDisplayed
             if pendingRemaining > 0 || completedRemaining > 0 {
                 let total = pendingRemaining + completedRemaining
-                let moreItem = NSMenuItem(title: "更多...（还有 \(total) 条）", action: nil, keyEquivalent: "")
+                let moreItem = NSMenuItem(title: L10n.moreItems(total), action: nil, keyEquivalent: "")
                 moreItem.isEnabled = false
                 menu.addItem(moreItem)
             }
@@ -254,11 +264,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private func addFooterItems(to menu: NSMenu) {
         menu.addItem(NSMenuItem.separator())
 
-        let settingsItem = NSMenuItem(title: "设置...", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: L10n.settingsMenu, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 
-        let quitItem = NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L10n.quit, action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
     }

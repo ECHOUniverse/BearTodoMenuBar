@@ -63,8 +63,7 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 20) {
                     // Header
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L10n.settings)
@@ -220,7 +219,6 @@ struct SettingsView: View {
                     }
                 }
                 .padding(24)
-            }
 
             // Success Toast
             if showSuccess {
@@ -243,9 +241,10 @@ struct SettingsView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     Spacer().frame(height: 24)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(minWidth: 420, maxWidth: .infinity, minHeight: 480, maxHeight: .infinity)
+        .frame(minWidth: 420, maxWidth: .infinity)
         .onAppear {
             token = KeychainStorage.shared.token ?? ""
             isAuthorized = BearBookmarkManager.shared.hasBookmark

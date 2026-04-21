@@ -174,7 +174,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         if todo.isReminderCompleted {
                             todoItem.attributedTitle = NSAttributedString(
                                 string: "  \(todo.text)",
-                                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
+                                attributes: [
+                                    .foregroundColor: NSColor.tertiaryLabelColor,
+                                    .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                                    .strikethroughColor: NSColor.tertiaryLabelColor
+                                ]
                             )
                         }
                         menu.addItem(todoItem)
@@ -219,6 +223,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         todoItem.target = self
                         todoItem.representedObject = todo.noteId
                         todoItem.toolTip = "在 Bear 中打开"
+                        todoItem.attributedTitle = NSAttributedString(
+                            string: "  \(todo.text)",
+                            attributes: [
+                                .foregroundColor: NSColor.tertiaryLabelColor,
+                                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                                .strikethroughColor: NSColor.tertiaryLabelColor
+                            ]
+                        )
                         menu.addItem(todoItem)
                         completedDisplayed += 1
                     }

@@ -3,7 +3,7 @@ import Foundation
 class BearFileWatcher {
     private var dispatchSource: DispatchSourceFileSystemObject?
     private var fileDescriptor: CInt = -1
-    private let debounce = Debounce(delay: 3.0)
+    private let debounce = Debounce(delay: 1.0)
     private let queue = DispatchQueue(label: "com.beartodo.filewatcher")
 
     var onChange: (() -> Void)?
@@ -27,6 +27,10 @@ class BearFileWatcher {
             }
         }
         return nil
+    }
+
+    func cancelDebounce() {
+        debounce.cancel()
     }
 
     func startWatching() {

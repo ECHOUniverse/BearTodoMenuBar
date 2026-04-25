@@ -15,7 +15,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var lastRefreshDate: Date?
     private var isRefreshing = false
     private let fileWatcher = BearFileWatcher()
-    private let remindersDebounce = Debounce(delay: 3.0)
+    private let remindersDebounce = Debounce(delay: 1.0)
 
     var onOpenSettings: (() -> Void)?
 
@@ -80,14 +80,23 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func activeApplicationDidChange(_ notification: Notification) {
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let wasBearFrontmost = bearIsFrontmost
         let wasRemindersFrontmost = remindersIsFrontmost
         bearIsFrontmost = frontmost == "net.shinyfrog.bear"
         remindersIsFrontmost = frontmost == "com.apple.reminders"
 
+        // When leaving Bear, cancel all debounces and refresh immediately
+        if wasBearFrontmost && !bearIsFrontmost {
+            remindersDebounce.cancel()
+            fileWatcher.cancelDebounce()
+            refresh()
+            return
+        }
+
+        // When leaving Reminders, cancel debounce and refresh immediately
         if wasRemindersFrontmost && !remindersIsFrontmost {
-            remindersDebounce.debounce { [weak self] in
-                self?.refresh()
-            }
+            remindersDebounce.cancel()
+            refresh()
         }
     }
 

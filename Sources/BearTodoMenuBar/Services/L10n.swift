@@ -93,6 +93,11 @@ final class L10n: ObservableObject {
         case openInBear
         case settingsMenu
         case quit
+        case remindersSection
+        case todaySection
+        case tomorrowSection
+        case scheduledSection
+        case unscheduledSection
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -144,7 +149,12 @@ final class L10n: ObservableObject {
             .moreItems: "更多...（还有 %d 条）",
             .openInBear: "在 Bear 中打开",
             .settingsMenu: "设置...",
-            .quit: "退出"
+            .quit: "退出",
+            .remindersSection: "系统提醒事项",
+            .todaySection: "今天",
+            .tomorrowSection: "明天",
+            .scheduledSection: "已安排",
+            .unscheduledSection: "未安排"
         ]
 
         private static let enStrings: [StringKey: String] = [
@@ -196,7 +206,12 @@ final class L10n: ObservableObject {
             .moreItems: "More... (%d remaining)",
             .openInBear: "Open in Bear",
             .settingsMenu: "Settings...",
-            .quit: "Quit"
+            .quit: "Quit",
+            .remindersSection: "Reminders",
+            .todaySection: "Today",
+            .tomorrowSection: "Tomorrow",
+            .scheduledSection: "Scheduled",
+            .unscheduledSection: "Unscheduled"
         ]
 
         private static func tr(_ key: StringKey) -> String {
@@ -256,6 +271,11 @@ final class L10n: ObservableObject {
     static var openInBear: String { tr(.openInBear) }
     static var settingsMenu: String { tr(.settingsMenu) }
     static var quit: String { tr(.quit) }
+    static var remindersSection: String { tr(.remindersSection) }
+    static var todaySection: String { tr(.todaySection) }
+    static var tomorrowSection: String { tr(.tomorrowSection) }
+    static var scheduledSection: String { tr(.scheduledSection) }
+    static var unscheduledSection: String { tr(.unscheduledSection) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

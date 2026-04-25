@@ -14,3 +14,17 @@ struct NoteTodos: Identifiable {
     let title: String
     let todos: [TodoItem]
 }
+
+enum ReminderDueCategory: String, CaseIterable {
+    case today
+    case tomorrow
+    case scheduled
+    case unscheduled
+}
+
+struct SystemReminderItem: Identifiable {
+    let id: String
+    let title: String
+    let dueCategory: ReminderDueCategory
+    let reminderIdentifier: String
+}

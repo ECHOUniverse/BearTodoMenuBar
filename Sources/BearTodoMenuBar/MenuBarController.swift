@@ -2,6 +2,7 @@ import Cocoa
 import EventKit
 
 private var kNoteIdKey: UInt8 = 0
+private var kReminderIdentifierKey: UInt8 = 0
 
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
@@ -10,6 +11,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private var noteTodos: [NoteTodos] = []
     private var completedNoteTodos: [NoteTodos] = []
+    private var systemReminders: [SystemReminderItem] = []
     private var lastRefreshDate: Date?
     private var isRefreshing = false
     private let fileWatcher = BearFileWatcher()
@@ -152,7 +154,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let allTodos = noteTodos.flatMap { $0.todos }
         let allCompletedTodos = completedNoteTodos.flatMap { $0.todos }
 
-        if allTodos.isEmpty && allCompletedTodos.isEmpty {
+        if allTodos.isEmpty && allCompletedTodos.isEmpty && systemReminders.isEmpty {
             let emptyItem = NSMenuItem(title: L10n.noTodos, action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
@@ -287,10 +289,63 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 }
             }
 
+            // 系统提醒事项区域
+            let maxReminders = 20
+            var remindersDisplayed = 0
+
+            if ReminderService.shared.isAuthorized && !systemReminders.isEmpty {
+                menu.addItem(NSMenuItem.separator())
+
+                let sectionHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+                sectionHeader.attributedTitle = NSAttributedString(
+                    string: L10n.remindersSection,
+                    attributes: [
+                        .font: NSFont.boldSystemFont(ofSize: 13),
+                        .foregroundColor: NSColor.secondaryLabelColor
+                    ]
+                )
+                sectionHeader.isEnabled = false
+                menu.addItem(sectionHeader)
+
+                for category in ReminderDueCategory.allCases {
+                    let items = systemReminders.filter { $0.dueCategory == category }
+                    guard !items.isEmpty else { continue }
+                    guard remindersDisplayed < maxReminders else { break }
+
+                    let categoryTitle: String = {
+                        switch category {
+                        case .today: return L10n.todaySection
+                        case .tomorrow: return L10n.tomorrowSection
+                        case .scheduled: return L10n.scheduledSection
+                        case .unscheduled: return L10n.unscheduledSection
+                        }
+                    }()
+                    let categoryItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+                    categoryItem.attributedTitle = NSAttributedString(
+                        string: "> \(categoryTitle)",
+                        attributes: [
+                            .font: NSFont.systemFont(ofSize: 11),
+                            .foregroundColor: NSColor.tertiaryLabelColor
+                        ]
+                    )
+                    categoryItem.isEnabled = false
+                    menu.addItem(categoryItem)
+
+                    for reminder in items {
+                        guard remindersDisplayed < maxReminders else { break }
+                        let reminderItem = NSMenuItem()
+                        reminderItem.view = makeReminderMenuItemView(reminder: reminder)
+                        menu.addItem(reminderItem)
+                        remindersDisplayed += 1
+                    }
+                }
+            }
+
             let pendingRemaining = allTodos.count - pendingDisplayed
             let completedRemaining = allCompletedTodos.count - completedDisplayed
-            if pendingRemaining > 0 || completedRemaining > 0 {
-                let total = pendingRemaining + completedRemaining
+            let remindersRemaining = systemReminders.count - remindersDisplayed
+            if pendingRemaining > 0 || completedRemaining > 0 || remindersRemaining > 0 {
+                let total = pendingRemaining + completedRemaining + remindersRemaining
                 let moreItem = NSMenuItem(title: L10n.moreItems(total), action: nil, keyEquivalent: "")
                 moreItem.isEnabled = false
                 menu.addItem(moreItem)
@@ -344,6 +399,63 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         BearService.shared.openNote(id: noteId)
     }
 
+    private func makeReminderMenuItemView(reminder: SystemReminderItem) -> NSView {
+        let container = NSView(frame: .zero)
+
+        let imageView = NSImageView(frame: .zero)
+        if let image = NSImage(systemSymbolName: "square", accessibilityDescription: nil) {
+            imageView.image = image
+        }
+        imageView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = NSTextField(wrappingLabelWithString: reminder.title)
+        label.isEditable = false
+        label.isSelectable = false
+        label.isBordered = false
+        label.drawsBackground = false
+        label.lineBreakMode = .byTruncatingTail
+        label.preferredMaxLayoutWidth = Self.menuItemMaxWidth - 40
+        label.font = NSFont.menuFont(ofSize: 0)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(imageView)
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            imageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 14),
+            imageView.heightAnchor.constraint(equalToConstant: 14),
+            label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2)
+        ])
+
+        let fitted = label.fittingSize
+        let height = max(fitted.height + 4, CGFloat(22))
+        container.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: height)
+
+        objc_setAssociatedObject(container, &kReminderIdentifierKey, reminder.reminderIdentifier, .OBJC_ASSOCIATION_RETAIN)
+
+        let click = NSClickGestureRecognizer(target: self, action: #selector(reminderItemClicked(_:)))
+        container.addGestureRecognizer(click)
+
+        return container
+    }
+
+    @objc private func reminderItemClicked(_ sender: NSClickGestureRecognizer) {
+        guard let view = sender.view,
+              let identifier = objc_getAssociatedObject(view, &kReminderIdentifierKey) as? String else {
+            return
+        }
+        ReminderService.shared.toggleReminderCompletion(identifier: identifier) { [weak self] success in
+            guard let self = self, success else { return }
+            self.refresh()
+        }
+    }
+
     private func addFooterItems(to menu: NSMenu) {
         menu.addItem(NSMenuItem.separator())
 
@@ -368,8 +480,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         BearService.shared.fetchAllUncheckedTodos { [weak self] result in
             guard let self = self else { return }
-            self.isRefreshing = false
-            self.lastRefreshDate = Date()
 
             switch result {
             case .success(let notes):
@@ -403,12 +513,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
                     self.noteTodos = pendingNotes
                     self.completedNoteTodos = completedNotes
-                    self.rebuildMenu()
+
+                    // Fetch system reminders after Bear sync
+                    ReminderService.shared.fetchUncompletedReminders { items in
+                        self.systemReminders = items
+                        self.isRefreshing = false
+                        self.lastRefreshDate = Date()
+                        self.rebuildMenu()
+                    }
                 }
             case .failure(let error):
                 print("Refresh failed: \(error)")
                 self.noteTodos = []
                 self.completedNoteTodos = []
+                self.systemReminders = []
+                self.isRefreshing = false
+                self.lastRefreshDate = Date()
                 self.rebuildMenu()
             }
         }

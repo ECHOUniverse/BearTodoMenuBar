@@ -11,6 +11,10 @@ final class ReminderService {
 
     private var calendarIdentifier: String?
 
+    var isAuthorized: Bool {
+        isAuthorizedStatus(EKEventStore.authorizationStatus(for: .reminder))
+    }
+
     func requestAccess() async -> Bool {
         let status = EKEventStore.authorizationStatus(for: .reminder)
         if isAuthorizedStatus(status) {
@@ -144,7 +148,105 @@ final class ReminderService {
         }
     }
 
-    private func isAuthorizedStatus(_ status: EKAuthorizationStatus) -> Bool {
+    func fetchUncompletedReminders(completion: @escaping ([SystemReminderItem]) -> Void) {
+        let status = EKEventStore.authorizationStatus(for: .reminder)
+        guard isAuthorizedStatus(status) else {
+            completion([])
+            return
+        }
+
+        let allCalendars = eventStore.calendars(for: .reminder)
+        let filteredCalendars = allCalendars.filter { $0.title != calendarTitle }
+
+        guard !filteredCalendars.isEmpty else {
+            completion([])
+            return
+        }
+
+        let predicate = eventStore.predicateForReminders(in: filteredCalendars)
+        eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
+            guard let self = self else {
+                completion([])
+                return
+            }
+
+            let todayComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+            let tomorrowDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
+            let tomorrowComponents = Calendar.current.dateComponents([.year, .month, .day], from: tomorrowDate)
+
+            var todayItems: [SystemReminderItem] = []
+            var tomorrowItems: [SystemReminderItem] = []
+            var scheduledItems: [SystemReminderItem] = []
+            var unscheduledItems: [SystemReminderItem] = []
+
+            for reminder in (reminders ?? []) {
+                guard !reminder.isCompleted else { continue }
+
+                if let notes = reminder.notes, notes.hasPrefix(self.notesPrefix) {
+                    continue
+                }
+
+                let title = reminder.title ?? ""
+                guard !title.isEmpty else { continue }
+
+                let identifier = reminder.calendarItemIdentifier
+                let category = self.categorizeDueDate(from: reminder.dueDateComponents, today: todayComponents, tomorrow: tomorrowComponents)
+                let item = SystemReminderItem(id: identifier, title: title, dueCategory: category, reminderIdentifier: identifier)
+
+                switch category {
+                case .today: todayItems.append(item)
+                case .tomorrow: tomorrowItems.append(item)
+                case .scheduled: scheduledItems.append(item)
+                case .unscheduled: unscheduledItems.append(item)
+                }
+            }
+
+            let sortBlock: ([SystemReminderItem]) -> [SystemReminderItem] = { items in
+                items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            }
+
+            let allItems = sortBlock(todayItems) + sortBlock(tomorrowItems) + sortBlock(scheduledItems) + sortBlock(unscheduledItems)
+
+            Task { @MainActor in
+                completion(allItems)
+            }
+        }
+    }
+
+    func toggleReminderCompletion(identifier: String, completion: @escaping (Bool) -> Void) {
+        guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder else {
+            Task { @MainActor in completion(false) }
+            return
+        }
+
+        reminder.isCompleted = true
+        do {
+            try eventStore.save(reminder, commit: true)
+            Task { @MainActor in completion(true) }
+        } catch {
+            print("Failed to toggle reminder completion: \(error)")
+            Task { @MainActor in completion(false) }
+        }
+    }
+
+    private func categorizeDueDate(from components: DateComponents?, today: DateComponents, tomorrow: DateComponents) -> ReminderDueCategory {
+        guard let components = components,
+              let year = components.year,
+              let month = components.month,
+              let day = components.day else {
+            return .unscheduled
+        }
+
+        if year == today.year && month == today.month && day == today.day {
+            return .today
+        } else if year == tomorrow.year && month == tomorrow.month && day == tomorrow.day {
+            return .tomorrow
+        } else {
+            return .scheduled
+        }
+    }
+
+    func isAuthorizedStatus(_ status: EKAuthorizationStatus) -> Bool {
         if status == .authorized { return true }
         if #available(macOS 14.0, *) {
             return status == .fullAccess

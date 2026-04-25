@@ -1,8 +1,12 @@
 import Cocoa
 import EventKit
 
+private var kNoteIdKey: UInt8 = 0
+
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
+    private static let maxSingleLineLength = 15
+    private static let menuItemMaxWidth: CGFloat = 280
     private var statusItem: NSStatusItem?
     private var noteTodos: [NoteTodos] = []
     private var completedNoteTodos: [NoteTodos] = []
@@ -177,19 +181,38 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     for todo in note.todos {
                         guard pendingDisplayed < maxPending else { break }
 
-                        let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
-                        todoItem.target = self
-                        todoItem.representedObject = todo.noteId
-                        todoItem.toolTip = L10n.openInBear
-                        if todo.isReminderCompleted {
-                            todoItem.attributedTitle = NSAttributedString(
-                                string: "  \(todo.text)",
-                                attributes: [
-                                    .foregroundColor: NSColor.tertiaryLabelColor,
-                                    .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                                    .strikethroughColor: NSColor.tertiaryLabelColor
-                                ]
-                            )
+                        let todoItem: NSMenuItem
+                        if needsWrapping(todo.text) {
+                            todoItem = NSMenuItem()
+                            let view = makeWrappingMenuItemView(text: todo.text)
+                            bindClickAction(to: view, noteId: todo.noteId)
+                            if todo.isReminderCompleted {
+                                if let label = view.subviews.first as? NSTextField {
+                                    label.attributedStringValue = NSAttributedString(
+                                        string: "  \(todo.text)",
+                                        attributes: [
+                                            .foregroundColor: NSColor.tertiaryLabelColor,
+                                            .strikethroughStyle: NSUnderlineStyle.single.rawValue
+                                        ]
+                                    )
+                                }
+                            }
+                            todoItem.view = view
+                        } else {
+                            todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
+                            todoItem.target = self
+                            todoItem.representedObject = todo.noteId
+                            todoItem.toolTip = L10n.openInBear
+                            if todo.isReminderCompleted {
+                                todoItem.attributedTitle = NSAttributedString(
+                                    string: "  \(todo.text)",
+                                    attributes: [
+                                        .foregroundColor: NSColor.tertiaryLabelColor,
+                                        .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                                        .strikethroughColor: NSColor.tertiaryLabelColor
+                                    ]
+                                )
+                            }
                         }
                         menu.addItem(todoItem)
                         pendingDisplayed += 1
@@ -229,18 +252,35 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     for todo in note.todos {
                         guard completedDisplayed < maxCompleted else { break }
 
-                        let todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
-                        todoItem.target = self
-                        todoItem.representedObject = todo.noteId
-                        todoItem.toolTip = L10n.openInBear
-                        todoItem.attributedTitle = NSAttributedString(
-                            string: "  \(todo.text)",
-                            attributes: [
-                                .foregroundColor: NSColor.tertiaryLabelColor,
-                                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                                .strikethroughColor: NSColor.tertiaryLabelColor
-                            ]
-                        )
+                        let todoItem: NSMenuItem
+                        if needsWrapping(todo.text) {
+                            todoItem = NSMenuItem()
+                            let view = makeWrappingMenuItemView(text: todo.text)
+                            bindClickAction(to: view, noteId: todo.noteId)
+                            if let label = view.subviews.first as? NSTextField {
+                                label.attributedStringValue = NSAttributedString(
+                                    string: "  \(todo.text)",
+                                    attributes: [
+                                        .foregroundColor: NSColor.tertiaryLabelColor,
+                                        .strikethroughStyle: NSUnderlineStyle.single.rawValue
+                                    ]
+                                )
+                            }
+                            todoItem.view = view
+                        } else {
+                            todoItem = NSMenuItem(title: "  \(todo.text)", action: #selector(openNote(_:)), keyEquivalent: "")
+                            todoItem.target = self
+                            todoItem.representedObject = todo.noteId
+                            todoItem.toolTip = L10n.openInBear
+                            todoItem.attributedTitle = NSAttributedString(
+                                string: "  \(todo.text)",
+                                attributes: [
+                                    .foregroundColor: NSColor.tertiaryLabelColor,
+                                    .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                                    .strikethroughColor: NSColor.tertiaryLabelColor
+                                ]
+                            )
+                        }
                         menu.addItem(todoItem)
                         completedDisplayed += 1
                     }
@@ -259,6 +299,49 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         addFooterItems(to: menu)
         statusItem?.menu = menu
+    }
+
+    private func needsWrapping(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).count > Self.maxSingleLineLength
+    }
+
+    private func makeWrappingMenuItemView(text: String) -> NSView {
+        let container = NSView(frame: .zero)
+
+        let label = NSTextField(wrappingLabelWithString: "  \(text)")
+        label.isEditable = false
+        label.isSelectable = false
+        label.isBordered = false
+        label.drawsBackground = false
+        label.lineBreakMode = .byWordWrapping
+        label.preferredMaxLayoutWidth = Self.menuItemMaxWidth - 20
+        label.font = NSFont.menuFont(ofSize: 0)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10)
+        ])
+
+        let fitted = label.fittingSize
+        container.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: fitted.height + 4)
+
+        return container
+    }
+
+    private func bindClickAction(to view: NSView, noteId: String) {
+        let click = NSClickGestureRecognizer(target: self, action: #selector(wrappingItemClicked(_:)))
+        view.addGestureRecognizer(click)
+        objc_setAssociatedObject(view, &kNoteIdKey, noteId, .OBJC_ASSOCIATION_RETAIN)
+    }
+
+    @objc private func wrappingItemClicked(_ sender: NSClickGestureRecognizer) {
+        guard let view = sender.view,
+              let noteId = objc_getAssociatedObject(view, &kNoteIdKey) as? String else { return }
+        BearService.shared.openNote(id: noteId)
     }
 
     private func addFooterItems(to menu: NSMenu) {

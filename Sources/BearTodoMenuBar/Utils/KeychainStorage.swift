@@ -7,28 +7,37 @@ extension Notification.Name {
 
 class KeychainStorage {
     static let shared = KeychainStorage()
-    private let service = "com.beartodo"
-    private let tokenAccount = "bear_api_token"
+    private let tokenKey = "bear_api_token"
     private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let defaults = UserDefaults.standard
 
-    private var cachedToken: String?
-    private var didLoadToken = false
+    private var didAttemptMigration = false
 
     var token: String? {
         get {
-            if didLoadToken { return cachedToken }
-            cachedToken = readFromKeychain(account: tokenAccount)
-            didLoadToken = true
-            return cachedToken
+            // Fast path: already stored in UserDefaults
+            if let value = defaults.string(forKey: tokenKey), !value.isEmpty {
+                return value
+            }
+
+            // One-time migration from keychain
+            if !didAttemptMigration {
+                didAttemptMigration = true
+                if let keychainValue = readFromKeychain(account: tokenKey),
+                   !keychainValue.isEmpty {
+                    defaults.set(keychainValue, forKey: tokenKey)
+                    deleteFromKeychain(account: tokenKey)
+                    return keychainValue
+                }
+            }
+
+            return nil
         }
         set {
-            cachedToken = newValue
-            didLoadToken = true
             if let value = newValue, !value.isEmpty {
-                _ = saveToKeychain(value, account: tokenAccount)
+                defaults.set(value, forKey: tokenKey)
             } else {
-                deleteFromKeychain(account: tokenAccount)
+                defaults.removeObject(forKey: tokenKey)
             }
             NotificationCenter.default.post(name: .bearAPITokenDidChange, object: nil)
         }
@@ -49,35 +58,17 @@ class KeychainStorage {
     }
 
     func clearToken() {
-        cachedToken = nil
-        didLoadToken = true
-        deleteFromKeychain(account: tokenAccount)
+        defaults.removeObject(forKey: tokenKey)
+        deleteFromKeychain(account: tokenKey)
         NotificationCenter.default.post(name: .bearAPITokenDidChange, object: nil)
     }
 
-    // MARK: - Keychain Helpers
-
-    private func saveToKeychain(_ value: String, account: String) -> Bool {
-        guard let data = value.data(using: .utf8) else { return false }
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-
-        SecItemDelete(query as CFDictionary)
-
-        let status = SecItemAdd(query as CFDictionary, nil)
-        return status == errSecSuccess
-    }
+    // MARK: - Keychain Helpers (one-time migration)
 
     private func readFromKeychain(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
+            kSecAttrService as String: "com.beartodo",
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
@@ -97,7 +88,7 @@ class KeychainStorage {
     private func deleteFromKeychain(account: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
+            kSecAttrService as String: "com.beartodo",
             kSecAttrAccount as String: account
         ]
         SecItemDelete(query as CFDictionary)

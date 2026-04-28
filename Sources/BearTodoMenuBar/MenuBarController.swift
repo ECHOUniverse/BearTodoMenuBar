@@ -14,6 +14,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var systemReminders: [SystemReminderItem] = []
     private var lastRefreshDate: Date?
     private var isRefreshing = false
+    private var isPaused = false
     private let fileWatcher = BearFileWatcher()
     private let remindersDebounce = Debounce(delay: 1.0)
 
@@ -141,6 +142,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             refreshItem.target = self
             menu.addItem(refreshItem)
         }
+
+        let pauseTitle = isPaused ? L10n.resumeSync : L10n.pauseSync
+        let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(togglePause), keyEquivalent: "")
+        pauseItem.target = self
+        menu.addItem(pauseItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -478,6 +484,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func refresh() {
+        guard !isPaused else { return }
         guard !isRefreshing else { return }
         guard KeychainStorage.shared.hasToken else {
             rebuildMenu()
@@ -540,6 +547,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 self.lastRefreshDate = Date()
                 self.rebuildMenu()
             }
+        }
+    }
+
+    @objc private func togglePause() {
+        isPaused.toggle()
+        if !isPaused {
+            refresh()
+        } else {
+            rebuildMenu()
         }
     }
 

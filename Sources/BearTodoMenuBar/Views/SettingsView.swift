@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import EventKit
+import ServiceManagement
 
 // MARK: - Liquid Glass Card
 
@@ -57,9 +58,18 @@ struct SettingsView: View {
     @State private var errorMessage: String = ""
     @State private var isAuthorized: Bool = false
     @State private var isReminderSyncEnabled: Bool = false
+    @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
 
     var onClose: (() -> Void)?
+
+    init(onClose: (() -> Void)? = nil) {
+        self.onClose = onClose
+        // Initialize persisted toggle states before the view renders,
+        // so onChange handlers don't fire on initial appearance.
+        _isReminderSyncEnabled = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
+        _isLaunchAtLoginEnabled = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
+    }
 
     var body: some View {
         ZStack {
@@ -138,6 +148,34 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
+                        }
+                    }
+
+                    // MARK: Launch at Login Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "power")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text(L10n.launchAtLogin)
+                                    .font(.headline)
+                                Spacer()
+                            }
+
+                            Toggle(isOn: $isLaunchAtLoginEnabled) {
+                                Text(L10n.launchAtLoginToggle)
+                                    .font(.callout)
+                            }
+                            .toggleStyle(.switch)
+                            .onChange(of: isLaunchAtLoginEnabled) { enabled in
+                                handleLaunchAtLoginToggle(enabled)
+                            }
+
+                            Text(L10n.launchAtLoginDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
 
@@ -248,7 +286,6 @@ struct SettingsView: View {
         .onAppear {
             token = KeychainStorage.shared.token ?? ""
             isAuthorized = BearBookmarkManager.shared.hasBookmark
-            isReminderSyncEnabled = KeychainStorage.shared.isReminderSyncEnabled
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
         }
         .alert(L10n.saveFailed, isPresented: $showError) {
@@ -337,6 +374,28 @@ struct SettingsView: View {
             }
         } else {
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
+        }
+    }
+
+    private func handleLaunchAtLoginToggle(_ enabled: Bool) {
+        if enabled {
+            do {
+                try SMAppService.mainApp.register()
+                KeychainStorage.shared.isLaunchAtLoginEnabled = true
+            } catch {
+                isLaunchAtLoginEnabled = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        } else {
+            do {
+                try SMAppService.mainApp.unregister()
+                KeychainStorage.shared.isLaunchAtLoginEnabled = false
+            } catch {
+                isLaunchAtLoginEnabled = true
+                errorMessage = error.localizedDescription
+                showError = true
+            }
         }
     }
 

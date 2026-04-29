@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 @main
 struct BearTodoMenuBarApp: App {
@@ -26,6 +27,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController()
         menuBarController?.onOpenSettings = { [weak self] in
             self?.showSettingsWindow()
+        }
+
+        // Sync persisted OS-level states on launch (handles reinstall scenarios
+        // where UserDefaults may be cleared but the OS still has the record).
+
+        // Launch at login: if SMAppService reports enabled, restore the local flag.
+        if SMAppService.mainApp.status == .enabled {
+            KeychainStorage.shared.isLaunchAtLoginEnabled = true
+        }
+
+        // Reminder sync persistence: if the flag survived reinstall via Keychain,
+        // silently re-request OS permission once so sync continues to work.
+        if KeychainStorage.shared.isReminderSyncEnabled {
+            if !ReminderService.shared.isAuthorized {
+                Task {
+                    _ = await ReminderService.shared.requestAccess()
+                }
+            }
         }
     }
 

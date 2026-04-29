@@ -33,6 +33,10 @@ class BearFileWatcher {
         debounce.cancel()
     }
 
+    func updateSyncInterval(_ interval: TimeInterval) {
+        debounce.delay = interval
+    }
+
     func startWatching() {
         stopWatching()
 

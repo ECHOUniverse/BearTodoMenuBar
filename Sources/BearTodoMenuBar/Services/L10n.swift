@@ -100,6 +100,13 @@ final class L10n: ObservableObject {
         case unscheduledSection
         case pauseSync
         case resumeSync
+        case launchAtLogin
+        case launchAtLoginToggle
+        case launchAtLoginDescription
+        case syncInterval
+        case syncIntervalTitle
+        case syncIntervalImmediate
+        case syncIntervalValue
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -158,7 +165,14 @@ final class L10n: ObservableObject {
             .scheduledSection: "已安排",
             .unscheduledSection: "未安排",
             .pauseSync: "暂停同步",
-            .resumeSync: "开始同步"
+            .resumeSync: "开始同步",
+            .launchAtLogin: "开机启动",
+            .launchAtLoginToggle: "开机时自动启动",
+            .launchAtLoginDescription: "开启后应用将在登录时自动启动",
+            .syncInterval: "同步间隔",
+            .syncIntervalTitle: "同步间隔",
+            .syncIntervalImmediate: "立即同步",
+            .syncIntervalValue: "延迟 %d 秒后同步"
         ]
 
         private static let enStrings: [StringKey: String] = [
@@ -217,7 +231,14 @@ final class L10n: ObservableObject {
             .scheduledSection: "Scheduled",
             .unscheduledSection: "Unscheduled",
             .pauseSync: "Pause Sync",
-            .resumeSync: "Resume Sync"
+            .resumeSync: "Resume Sync",
+            .launchAtLogin: "Launch at Login",
+            .launchAtLoginToggle: "Launch at Login",
+            .launchAtLoginDescription: "App will automatically launch when you log in",
+            .syncInterval: "Sync Interval",
+            .syncIntervalTitle: "Sync Interval",
+            .syncIntervalImmediate: "Immediate",
+            .syncIntervalValue: "Sync after %d s"
         ]
 
         private static func tr(_ key: StringKey) -> String {
@@ -284,6 +305,17 @@ final class L10n: ObservableObject {
     static var unscheduledSection: String { tr(.unscheduledSection) }
     static var pauseSync: String { tr(.pauseSync) }
     static var resumeSync: String { tr(.resumeSync) }
+    static var launchAtLogin: String { tr(.launchAtLogin) }
+    static var launchAtLoginToggle: String { tr(.launchAtLoginToggle) }
+    static var launchAtLoginDescription: String { tr(.launchAtLoginDescription) }
+    static var syncInterval: String { tr(.syncInterval) }
+
+    static func syncIntervalDescription(_ seconds: Int) -> String {
+        if seconds == 0 {
+            return tr(.syncIntervalImmediate)
+        }
+        return String(format: tr(.syncIntervalValue), seconds)
+    }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

@@ -60,6 +60,9 @@ struct SettingsView: View {
     @State private var isReminderSyncEnabled: Bool = false
     @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
+    @State private var syncIntervalIndex: Double = 0
+
+    private let syncValues = [0, 1, 3, 5, 7]
 
     var onClose: (() -> Void)?
 
@@ -69,6 +72,9 @@ struct SettingsView: View {
         // so onChange handlers don't fire on initial appearance.
         _isReminderSyncEnabled = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
         _isLaunchAtLoginEnabled = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
+        let stored = KeychainStorage.shared.syncInterval
+        let validValues = [0, 1, 3, 5, 7]
+        _syncIntervalIndex = State(initialValue: Double(validValues.firstIndex(of: stored) ?? 0))
     }
 
     var body: some View {
@@ -149,6 +155,30 @@ struct SettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                    }
+
+                    // MARK: Sync Interval Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text(L10n.syncInterval)
+                                    .font(.headline)
+                            }
+
+                            Slider(value: $syncIntervalIndex, in: 0...4, step: 1)
+
+                            Text(L10n.syncIntervalDescription(syncValues[Int(syncIntervalIndex)]))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .onChange(of: syncIntervalIndex) { _ in
+                        let value = syncValues[Int(syncIntervalIndex)]
+                        KeychainStorage.shared.syncInterval = value
                     }
 
                     // MARK: Launch at Login Card

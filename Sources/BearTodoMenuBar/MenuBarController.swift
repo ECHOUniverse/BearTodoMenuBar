@@ -24,7 +24,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var isRefreshing = false
     private var isPaused = false
     private let fileWatcher = BearFileWatcher()
-    private let remindersDebounce = Debounce(delay: 1.0)
+    private let remindersDebounce = Debounce(delay: TimeInterval(KeychainStorage.shared.syncInterval))
 
     var onOpenSettings: (() -> Void)?
 
@@ -54,6 +54,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             self?.rebuildMenu()
         }
         fileWatcher.startWatching()
+        fileWatcher.updateSyncInterval(TimeInterval(KeychainStorage.shared.syncInterval))
     }
 
     private func setupNotifications() {
@@ -81,10 +82,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             name: .appLanguageDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(syncIntervalDidChange),
+            name: .syncIntervalDidChange,
+            object: nil
+        )
     }
 
     @objc private func languageDidChange() {
         rebuildMenu()
+    }
+
+    @objc private func syncIntervalDidChange() {
+        let interval = TimeInterval(KeychainStorage.shared.syncInterval)
+        remindersDebounce.delay = interval
+        fileWatcher.updateSyncInterval(interval)
     }
 
     @objc private func activeApplicationDidChange(_ notification: Notification) {

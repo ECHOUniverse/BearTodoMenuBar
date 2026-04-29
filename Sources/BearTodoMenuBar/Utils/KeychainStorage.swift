@@ -3,6 +3,7 @@ import Security
 
 extension Notification.Name {
     static let bearAPITokenDidChange = Notification.Name("bearAPITokenDidChange")
+    static let syncIntervalDidChange = Notification.Name("syncIntervalDidChange")
 }
 
 class KeychainStorage {
@@ -10,6 +11,7 @@ class KeychainStorage {
     private let tokenKey = "bear_api_token"
     private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let launchAtLoginKey = "bear_launch_at_login_enabled"
+    private let syncIntervalKey = "bear_sync_interval"
     private let defaults = UserDefaults.standard
 
     private var didAttemptMigration = false
@@ -83,6 +85,19 @@ class KeychainStorage {
         }
         set {
             defaults.set(newValue, forKey: launchAtLoginKey)
+        }
+    }
+
+    var syncInterval: Int {
+        get {
+            if defaults.object(forKey: syncIntervalKey) != nil {
+                return defaults.integer(forKey: syncIntervalKey)
+            }
+            return 0
+        }
+        set {
+            defaults.set(newValue, forKey: syncIntervalKey)
+            NotificationCenter.default.post(name: .syncIntervalDidChange, object: nil)
         }
     }
 

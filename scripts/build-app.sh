@@ -74,6 +74,8 @@ EOF
         # CI: create and use a temporary keychain
         security create-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
         security unlock-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
+        # Add to default search list so codesign finds it without --keychain flag
+        security list-keychains -s "$CI_KEYCHAIN_PATH" 2>&1
         security import "$TMPDIR/cert.p12" -k "$CI_KEYCHAIN_PATH" -P temp -A 2>&1
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp "$CI_KEYCHAIN_PATH" 2>&1
     else
@@ -107,7 +109,7 @@ cp "resources/AppIcon.icns" "${APP_PATH}/Contents/Resources/AppIcon.icns"
 # 6. Ensure persistent code signing certificate exists, then sign
 echo "  📝 Setting up code signing..."
 ensure_certificate
-codesign --force --deep --sign "$CERT_NAME" ${CI_KEYCHAIN_PATH:+--keychain "$CI_KEYCHAIN_PATH"} "${APP_PATH}"
+codesign --force --deep --sign "$CERT_NAME" "${APP_PATH}"
 
 # Cleanup CI temporary keychain
 if [ -n "$CI_KEYCHAIN_PATH" ]; then

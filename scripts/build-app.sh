@@ -36,7 +36,7 @@ ensure_certificate() {
     trap "rm -rf $TMPDIR" EXIT
 
     # Generate RSA key
-    openssl genrsa -out "$TMPDIR/key.pem" 2048 2>/dev/null
+    openssl genrsa -out "$TMPDIR/key.pem" 2048 2>&1
 
     # Config with code signing extended key usage
     cat > "$TMPDIR/cert.cfg" << EOF
@@ -61,28 +61,27 @@ EOF
         -out "$TMPDIR/cert.pem" \
         -days 3650 \
         -config "$TMPDIR/cert.cfg" \
-        -extensions v3_req 2>/dev/null
+        -extensions v3_req 2>&1
 
-    # Package as PKCS12
+    # Package as PKCS12 (no -legacy: macOS LibreSSL doesn't support it)
     openssl pkcs12 -export \
         -inkey "$TMPDIR/key.pem" \
         -in "$TMPDIR/cert.pem" \
         -out "$TMPDIR/cert.p12" \
-        -passout pass:temp \
-        -legacy 2>/dev/null
+        -passout pass:temp 2>&1
 
     if [ -n "$CI_KEYCHAIN_PATH" ]; then
         # CI: create and use a temporary keychain
-        security create-keychain -p temp "$CI_KEYCHAIN_PATH" 2>/dev/null
-        security unlock-keychain -p temp "$CI_KEYCHAIN_PATH" 2>/dev/null
-        security import "$TMPDIR/cert.p12" -k "$CI_KEYCHAIN_PATH" -P temp -A 2>/dev/null
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp "$CI_KEYCHAIN_PATH" 2>/dev/null
+        security create-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
+        security unlock-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
+        security import "$TMPDIR/cert.p12" -k "$CI_KEYCHAIN_PATH" -P temp -A 2>&1
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp "$CI_KEYCHAIN_PATH" 2>&1
     else
         # Local: import into login keychain (persistent across rebuilds)
         security import "$TMPDIR/cert.p12" \
             -k "$HOME/Library/Keychains/login.keychain-db" \
             -P temp \
-            -A 2>/dev/null
+            -A 2>&1
     fi
 
     echo "  ✅ Self-signed code signing certificate '$CERT_NAME' created"

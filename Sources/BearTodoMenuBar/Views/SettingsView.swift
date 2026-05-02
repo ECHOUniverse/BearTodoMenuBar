@@ -303,6 +303,18 @@ struct SettingsView: View {
                     }
                     .staggeredEntrance(6, animate: animateContent)
 
+                    Spacer(minLength: 4)
+
+                    // GitHub Link
+                    Link(destination: URL(string: "https://github.com/ECHOUniverse/BearTodoMenuBar")!) {
+                        Image(nsImage: Self.gitHubIcon)
+                            .resizable()
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .staggeredEntrance(7, animate: animateContent)
+
                     Spacer(minLength: 8)
 
                     // Bottom Actions
@@ -320,7 +332,7 @@ struct SettingsView: View {
                         .keyboardShortcut(.defaultAction)
                         .buttonStyle(.borderedProminent)
                     }
-                    .staggeredEntrance(7, animate: animateContent)
+                    .staggeredEntrance(8, animate: animateContent)
                 }
                 .padding(24)
 
@@ -367,6 +379,15 @@ struct SettingsView: View {
             Text(errorMessage)
         }
     }
+
+    private static var gitHubIcon: NSImage = {
+        guard let url = Bundle.module.url(forResource: "github-mark", withExtension: "png"),
+              let image = NSImage(contentsOf: url) else {
+            return NSImage()
+        }
+        image.isTemplate = true
+        return image
+    }()
 
     // MARK: - Reminder Access Helpers
 

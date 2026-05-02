@@ -8,7 +8,8 @@ let package = Package(
         .executableTarget(
             name: "BearTodoMenuBar",
             path: "Sources",
-            exclude: ["BearTodoMenuBar/Info.plist"]
+            exclude: ["BearTodoMenuBar/Info.plist"],
+            resources: [.process("BearTodoMenuBar/Resources")]
         )
     ]
 )

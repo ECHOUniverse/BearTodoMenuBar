@@ -47,6 +47,29 @@ struct StatusPill: View {
     }
 }
 
+// MARK: - Staggered Entrance
+
+struct StaggeredEntrance: ViewModifier {
+    let index: Int
+    let animate: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(animate ? 1 : 0)
+            .offset(y: animate ? 0 : 12)
+            .animation(
+                .spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05),
+                value: animate
+            )
+    }
+}
+
+extension View {
+    func staggeredEntrance(_ index: Int, animate: Bool) -> some View {
+        modifier(StaggeredEntrance(index: index, animate: animate))
+    }
+}
+
 // MARK: - Settings View
 
 struct SettingsView: View {
@@ -61,6 +84,7 @@ struct SettingsView: View {
     @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
     @State private var syncIntervalIndex: Double = 0
+    @State private var animateContent = false
 
     private let syncValues = [0, 1, 3, 5, 7]
 
@@ -91,6 +115,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 4)
+                    .staggeredEntrance(0, animate: animateContent)
 
                     // MARK: API Token Card
                     GlassCard {
@@ -121,6 +146,7 @@ struct SettingsView: View {
                                 )
                         }
                     }
+                    .staggeredEntrance(1, animate: animateContent)
 
                     // MARK: Reminders Card
                     GlassCard {
@@ -137,6 +163,7 @@ struct SettingsView: View {
                                     text: reminderAccessTextShort,
                                     color: reminderAccessColor
                                 )
+                                .animation(.default, value: reminderAccessStatus)
                             }
 
                             Toggle(isOn: $isReminderSyncEnabled) {
@@ -156,6 +183,7 @@ struct SettingsView: View {
                             }
                         }
                     }
+                    .staggeredEntrance(2, animate: animateContent)
 
                     // MARK: Sync Interval Card
                     GlassCard {
@@ -174,8 +202,11 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .contentTransition(.opacity)
+                                .animation(.default, value: syncIntervalIndex)
                         }
                     }
+                    .staggeredEntrance(3, animate: animateContent)
                     .onChange(of: syncIntervalIndex) { _ in
                         let value = syncValues[Int(syncIntervalIndex)]
                         KeychainStorage.shared.syncInterval = value
@@ -208,6 +239,7 @@ struct SettingsView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    .staggeredEntrance(4, animate: animateContent)
 
                     // MARK: Database Auth Card
                     GlassCard {
@@ -224,6 +256,7 @@ struct SettingsView: View {
                                     text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
                                     color: isAuthorized ? .green : .orange
                                 )
+                                .animation(.default, value: isAuthorized)
                             }
 
                             Text(isAuthorized
@@ -247,6 +280,7 @@ struct SettingsView: View {
                             .controlSize(.regular)
                         }
                     }
+                    .staggeredEntrance(5, animate: animateContent)
 
                     // MARK: Language Card
                     GlassCard {
@@ -267,6 +301,7 @@ struct SettingsView: View {
                             .pickerStyle(.segmented)
                         }
                     }
+                    .staggeredEntrance(6, animate: animateContent)
 
                     Spacer(minLength: 8)
 
@@ -285,6 +320,7 @@ struct SettingsView: View {
                         .keyboardShortcut(.defaultAction)
                         .buttonStyle(.borderedProminent)
                     }
+                    .staggeredEntrance(7, animate: animateContent)
                 }
                 .padding(24)
 
@@ -306,7 +342,11 @@ struct SettingsView: View {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
                         )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(
+                            .move(edge: .bottom).combined(with: .opacity)
+                            .combined(with: .scale(scale: 0.85))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7))
+                        )
                     Spacer().frame(height: 24)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -317,6 +357,9 @@ struct SettingsView: View {
             token = KeychainStorage.shared.token ?? ""
             isAuthorized = BearBookmarkManager.shared.hasBookmark
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+                animateContent = true
+            }
         }
         .alert(L10n.saveFailed, isPresented: $showError) {
             Button(L10n.ok, role: .cancel) {}

@@ -1,8 +1,8 @@
 import Cocoa
 import EventKit
+import SwiftUI
 
 private var kNoteIdKey: UInt8 = 0
-private var kReminderIdentifierKey: UInt8 = 0
 
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
@@ -421,60 +421,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     private func makeReminderMenuItemView(reminder: SystemReminderItem) -> NSView {
-        let container = NSView(frame: .zero)
-
-        let imageView = NSImageView(frame: .zero)
-        if let image = NSImage(systemSymbolName: "square", accessibilityDescription: nil) {
-            imageView.image = image
-        }
-        imageView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = NSTextField(wrappingLabelWithString: reminder.title)
-        label.isEditable = false
-        label.isSelectable = false
-        label.isBordered = false
-        label.drawsBackground = false
-        label.lineBreakMode = .byTruncatingTail
-        label.preferredMaxLayoutWidth = Self.menuItemMaxWidth - 40
-        label.font = NSFont.menuFont(ofSize: 0)
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        container.addSubview(imageView)
-        container.addSubview(label)
-
-        NSLayoutConstraint.activate([
-            imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
-            imageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: 14),
-            imageView.heightAnchor.constraint(equalToConstant: 14),
-            label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
-            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
-            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
-            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2)
-        ])
-
-        let fitted = label.fittingSize
-        let height = max(fitted.height + 4, CGFloat(22))
-        container.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: height)
-
-        objc_setAssociatedObject(container, &kReminderIdentifierKey, reminder.reminderIdentifier, .OBJC_ASSOCIATION_RETAIN)
-
-        let click = NSClickGestureRecognizer(target: self, action: #selector(reminderItemClicked(_:)))
-        container.addGestureRecognizer(click)
-
-        return container
-    }
-
-    @objc private func reminderItemClicked(_ sender: NSClickGestureRecognizer) {
-        guard let view = sender.view,
-              let identifier = objc_getAssociatedObject(view, &kReminderIdentifierKey) as? String else {
-            return
-        }
-        ReminderService.shared.toggleReminderCompletion(identifier: identifier) { [weak self] success in
-            guard let self = self, success else { return }
-            self.refresh()
-        }
+        let v = ReminderMenuItemView(
+            title: reminder.title,
+            reminderIdentifier: reminder.reminderIdentifier,
+            maxWidth: Self.menuItemMaxWidth,
+            onToggleComplete: { id, completion in
+                ReminderService.shared.toggleReminderCompletion(identifier: id, completion: completion)
+            },
+            onRequestRefresh: { [weak self] in
+                self?.refresh()
+            }
+        )
+        let hostingView = NSHostingView(rootView: v)
+        let size = hostingView.fittingSize
+        hostingView.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: max(size.height, 22))
+        return hostingView
     }
 
     private func addFooterItems(to menu: NSMenu) {

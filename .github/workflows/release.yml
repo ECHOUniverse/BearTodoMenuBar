@@ -27,6 +27,8 @@ jobs:
         run: chmod +x ./scripts/build-app.sh
 
       - name: Build .app bundle
+        env:
+          VERSION: ${{ github.ref_name }}
         run: ./scripts/build-app.sh
 
       - name: Package .app into zip
@@ -39,3 +41,14 @@ jobs:
         with:
           files: .build/release/BearTodoMenuBar.zip
           generate_release_notes: true
+
+      - name: Trigger tap repo update
+        env:
+          GH_TOKEN: ${{ secrets.TAP_REPO_PAT }}
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "Triggering tap update for ${VERSION}..."
+          gh workflow run update-cask.yml \
+            --repo ECHOUniverse/homebrew-bear-tap \
+            --ref main \
+            --field version="${VERSION}"

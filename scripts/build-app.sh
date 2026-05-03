@@ -103,6 +103,13 @@ cp "${BUILD_DIR}/${APP_NAME}" "${APP_PATH}/Contents/MacOS/${APP_NAME}"
 # 4. Copy Info.plist
 cp "Sources/BearTodoMenuBar/Info.plist" "${APP_PATH}/Contents/Info.plist"
 
+# 4b. Inject version from environment or git tag into the bundled copy
+VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")}"
+VERSION="${VERSION#v}"
+plutil -replace CFBundleShortVersionString -string "$VERSION" "${APP_PATH}/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$VERSION" "${APP_PATH}/Contents/Info.plist"
+echo "  📝 Injected version: $VERSION"
+
 # 5. Copy AppIcon
 cp "resources/AppIcon.icns" "${APP_PATH}/Contents/Resources/AppIcon.icns"
 

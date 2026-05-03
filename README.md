@@ -20,11 +20,24 @@ A macOS menu bar utility that automatically reads unchecked todo items from your
 
 ## Download & Installation
 
-### Option 1: Download from Release (Recommended)
+### Option 1: Homebrew (Recommended)
+
+```bash
+brew tap ECHOUniverse/bear-tap
+brew install --cask bear-todo-menu-bar
+```
+
+To upgrade:
+
+```bash
+brew update && brew upgrade --cask bear-todo-menu-bar
+```
+
+### Option 2: Download from Release
 
 Go to [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) and download the latest `BearTodoMenuBar.zip`. Unzip it and drag the `.app` into `/Applications`.
 
-### Option 2: Build from Source
+### Option 3: Build from Source
 
 ```bash
 # 1. Clone the repo

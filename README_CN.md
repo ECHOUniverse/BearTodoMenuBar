@@ -20,11 +20,24 @@
 
 ## 下载与安装
 
-### 方式一：从 Release 下载（推荐）
+### 方式一：Homebrew（推荐）
+
+```bash
+brew tap ECHOUniverse/bear-tap
+brew install --cask bear-todo-menu-bar
+```
+
+升级：
+
+```bash
+brew update && brew upgrade --cask bear-todo-menu-bar
+```
+
+### 方式二：从 Release 下载
 
 前往 [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) 下载最新版本的 `BearTodoMenuBar.zip`，解压后将 `.app` 拖入 `/Applications` 即可。
 
-### 方式二：从源码构建
+### 方式三：从源码构建
 
 ```bash
 # 1. 克隆项目

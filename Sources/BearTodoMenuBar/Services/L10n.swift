@@ -46,9 +46,6 @@ final class L10n: ObservableObject {
     private enum StringKey {
         case settings
         case settingsDescription
-        case bearApiToken
-        case apiTokenHint
-        case apiTokenPlaceholder
         case systemReminders
         case enableSync
         case databaseAccess
@@ -58,12 +55,6 @@ final class L10n: ObservableObject {
         case accessNotGranted
         case reauthorize
         case authorizeAccess
-        case cancel
-        case save
-        case saveSuccess
-        case saveFailed
-        case ok
-        case tokenEmpty
         case reminderAccessDenied
         case authorizePrompt
         case authorizeMessage
@@ -85,7 +76,6 @@ final class L10n: ObservableObject {
         case refreshing
         case lastUpdate
         case refreshNow
-        case configureTokenFirst
         case noDatabaseAuth
         case noTodos
         case completedSection
@@ -112,9 +102,6 @@ final class L10n: ObservableObject {
     private static let zhStrings: [StringKey: String] = [
             .settings: "设置",
             .settingsDescription: "配置 Bear 待办同步选项",
-            .bearApiToken: "Bear API Token",
-            .apiTokenHint: "在 Bear 应用中选择 Help → API Token 获取你的个人 Token。",
-            .apiTokenPlaceholder: "输入 API Token",
             .systemReminders: "系统提醒事项",
             .enableSync: "启用同步",
             .databaseAccess: "数据库访问授权",
@@ -124,12 +111,6 @@ final class L10n: ObservableObject {
             .accessNotGranted: "未授权访问 Bear 数据库，自动刷新功能不可用。",
             .reauthorize: "重新授权",
             .authorizeAccess: "授权访问",
-            .cancel: "取消",
-            .save: "保存",
-            .saveSuccess: "保存成功",
-            .saveFailed: "保存失败",
-            .ok: "确定",
-            .tokenEmpty: "Token 不能为空",
             .reminderAccessDenied: "无法访问提醒事项，请检查系统权限设置",
             .authorizePrompt: "授权访问",
             .authorizeMessage: "请选择 Bear 的 Application Data 目录",
@@ -151,7 +132,6 @@ final class L10n: ObservableObject {
             .refreshing: "⏳ 刷新中...",
             .lastUpdate: "上次更新：%@",
             .refreshNow: "立即刷新",
-            .configureTokenFirst: "请先配置 API Token",
             .noDatabaseAuth: "⚠️ 未授权数据库访问，自动刷新不可用",
             .noTodos: "暂无待办事项",
             .completedSection: "已完成（来自提醒事项）",
@@ -178,9 +158,6 @@ final class L10n: ObservableObject {
         private static let enStrings: [StringKey: String] = [
             .settings: "Settings",
             .settingsDescription: "Configure Bear Todo sync options",
-            .bearApiToken: "Bear API Token",
-            .apiTokenHint: "Get your personal token from Bear app: Help → API Token.",
-            .apiTokenPlaceholder: "Enter API Token",
             .systemReminders: "System Reminders",
             .enableSync: "Enable Sync",
             .databaseAccess: "Database Access Authorization",
@@ -190,12 +167,6 @@ final class L10n: ObservableObject {
             .accessNotGranted: "Database access not authorized, auto-refresh unavailable.",
             .reauthorize: "Re-authorize",
             .authorizeAccess: "Authorize Access",
-            .cancel: "Cancel",
-            .save: "Save",
-            .saveSuccess: "Saved",
-            .saveFailed: "Save Failed",
-            .ok: "OK",
-            .tokenEmpty: "Token cannot be empty",
             .reminderAccessDenied: "Cannot access Reminders, please check system permission settings",
             .authorizePrompt: "Authorize Access",
             .authorizeMessage: "Please select Bear's Application Data directory",
@@ -217,7 +188,6 @@ final class L10n: ObservableObject {
             .refreshing: "⏳ Refreshing...",
             .lastUpdate: "Last updated: %@",
             .refreshNow: "Refresh Now",
-            .configureTokenFirst: "Please configure API Token first",
             .noDatabaseAuth: "⚠️ Database access not authorized, auto-refresh unavailable",
             .noTodos: "No todo items",
             .completedSection: "Completed (from Reminders)",
@@ -253,9 +223,6 @@ final class L10n: ObservableObject {
 
     static var settings: String { tr(.settings) }
     static var settingsDescription: String { tr(.settingsDescription) }
-    static var bearApiToken: String { tr(.bearApiToken) }
-    static var apiTokenHint: String { tr(.apiTokenHint) }
-    static var apiTokenPlaceholder: String { tr(.apiTokenPlaceholder) }
     static var systemReminders: String { tr(.systemReminders) }
     static var enableSync: String { tr(.enableSync) }
     static var databaseAccess: String { tr(.databaseAccess) }
@@ -265,12 +232,6 @@ final class L10n: ObservableObject {
     static var accessNotGranted: String { tr(.accessNotGranted) }
     static var reauthorize: String { tr(.reauthorize) }
     static var authorizeAccess: String { tr(.authorizeAccess) }
-    static var cancel: String { tr(.cancel) }
-    static var save: String { tr(.save) }
-    static var saveSuccess: String { tr(.saveSuccess) }
-    static var saveFailed: String { tr(.saveFailed) }
-    static var ok: String { tr(.ok) }
-    static var tokenEmpty: String { tr(.tokenEmpty) }
     static var reminderAccessDenied: String { tr(.reminderAccessDenied) }
     static var authorizePrompt: String { tr(.authorizePrompt) }
     static var authorizeMessage: String { tr(.authorizeMessage) }
@@ -291,7 +252,6 @@ final class L10n: ObservableObject {
     static var reminderAccessPendingDesc: String { tr(.reminderAccessPendingDesc) }
     static var refreshing: String { tr(.refreshing) }
     static var refreshNow: String { tr(.refreshNow) }
-    static var configureTokenFirst: String { tr(.configureTokenFirst) }
     static var noDatabaseAuth: String { tr(.noDatabaseAuth) }
     static var noTodos: String { tr(.noTodos) }
     static var completedSection: String { tr(.completedSection) }

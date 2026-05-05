@@ -75,8 +75,6 @@ extension View {
 struct SettingsView: View {
     @ObservedObject var l10n = L10n.shared
     @AppStorage("app_language") var language: Language = .auto
-    @State private var token: String = ""
-    @State private var showSuccess = false
     @State private var showError = false
     @State private var errorMessage: String = ""
     @State private var isAuthorized: Bool = false
@@ -117,37 +115,6 @@ struct SettingsView: View {
                     .padding(.bottom, 4)
                     .staggeredEntrance(0, animate: animateContent)
 
-                    // MARK: API Token Card
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "key.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.secondary)
-                                Text(L10n.bearApiToken)
-                                    .font(.headline)
-                            }
-
-                            Text(L10n.apiTokenHint)
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            SecureField(L10n.apiTokenPlaceholder, text: $token)
-                                .textFieldStyle(.plain)
-                                .padding(10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color(nsColor: .textBackgroundColor).opacity(0.6))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
-                                )
-                        }
-                    }
-                    .staggeredEntrance(1, animate: animateContent)
-
                     // MARK: Reminders Card
                     GlassCard {
                         VStack(alignment: .leading, spacing: 12) {
@@ -183,7 +150,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .staggeredEntrance(2, animate: animateContent)
+                    .staggeredEntrance(1, animate: animateContent)
 
                     // MARK: Sync Interval Card
                     GlassCard {
@@ -206,7 +173,7 @@ struct SettingsView: View {
                                 .animation(.default, value: syncIntervalIndex)
                         }
                     }
-                    .staggeredEntrance(3, animate: animateContent)
+                    .staggeredEntrance(2, animate: animateContent)
                     .onChange(of: syncIntervalIndex) { _ in
                         let value = syncValues[Int(syncIntervalIndex)]
                         KeychainStorage.shared.syncInterval = value
@@ -239,7 +206,7 @@ struct SettingsView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    .staggeredEntrance(4, animate: animateContent)
+                    .staggeredEntrance(3, animate: animateContent)
 
                     // MARK: Database Auth Card
                     GlassCard {
@@ -280,7 +247,7 @@ struct SettingsView: View {
                             .controlSize(.regular)
                         }
                     }
-                    .staggeredEntrance(5, animate: animateContent)
+                    .staggeredEntrance(4, animate: animateContent)
 
                     // MARK: Language Card
                     GlassCard {
@@ -301,7 +268,7 @@ struct SettingsView: View {
                             .pickerStyle(.segmented)
                         }
                     }
-                    .staggeredEntrance(6, animate: animateContent)
+                    .staggeredEntrance(5, animate: animateContent)
 
                     Spacer(minLength: 4)
 
@@ -313,70 +280,20 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
-                    .staggeredEntrance(7, animate: animateContent)
+                    .staggeredEntrance(6, animate: animateContent)
 
                     Spacer(minLength: 8)
-
-                    // Bottom Actions
-                    HStack {
-                        Spacer()
-
-                        Button(L10n.cancel) {
-                            onClose?()
-                        }
-                        .keyboardShortcut(.cancelAction)
-
-                        Button(L10n.save) {
-                            saveToken()
-                        }
-                        .keyboardShortcut(.defaultAction)
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .staggeredEntrance(8, animate: animateContent)
                 }
                 .padding(24)
 
-            // Success Toast
-            if showSuccess {
-                VStack {
-                    Spacer()
-                    Text(L10n.saveSuccess)
-                        .font(.callout)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
-                        )
-                        .transition(
-                            .move(edge: .bottom).combined(with: .opacity)
-                            .combined(with: .scale(scale: 0.85))
-                            .animation(.spring(response: 0.4, dampingFraction: 0.7))
-                        )
-                    Spacer().frame(height: 24)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-        }
-        .frame(minWidth: 420, maxWidth: .infinity)
-        .onAppear {
-            token = KeychainStorage.shared.token ?? ""
-            isAuthorized = BearBookmarkManager.shared.hasBookmark
+            .frame(minWidth: 420, maxWidth: .infinity)
+            .onAppear {
+                isAuthorized = BearBookmarkManager.shared.hasBookmark
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
                 animateContent = true
             }
-        }
-        .alert(L10n.saveFailed, isPresented: $showError) {
-            Button(L10n.ok, role: .cancel) {}
-        } message: {
-            Text(errorMessage)
         }
     }
 
@@ -529,19 +446,4 @@ struct SettingsView: View {
         }
     }
 
-    private func saveToken() {
-        guard !token.isEmpty else {
-            errorMessage = L10n.tokenEmpty
-            showError = true
-            return
-        }
-
-        KeychainStorage.shared.token = token
-        showSuccess = true
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            showSuccess = false
-            onClose?()
-        }
-    }
 }

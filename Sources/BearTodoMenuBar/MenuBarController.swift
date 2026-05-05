@@ -58,12 +58,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     private func setupNotifications() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(refresh),
-            name: .bearAPITokenDidChange,
-            object: nil
-        )
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(activeApplicationDidChange),
@@ -171,16 +165,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        guard KeychainStorage.shared.hasToken else {
-            let tokenItem = NSMenuItem(title: L10n.configureTokenFirst, action: #selector(openSettings), keyEquivalent: "")
-            tokenItem.target = self
-            menu.addItem(tokenItem)
-            addFooterItems(to: menu)
-            statusItem?.menu = menu
-            return
-        }
-
-        if KeychainStorage.shared.hasToken && !BearBookmarkManager.shared.hasBookmark {
+        if !BearBookmarkManager.shared.hasBookmark {
             let authItem = NSMenuItem(title: L10n.noDatabaseAuth, action: nil, keyEquivalent: "")
             authItem.isEnabled = false
             menu.addItem(authItem)
@@ -453,10 +438,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func refresh() {
         guard !isPaused else { return }
         guard !isRefreshing else { return }
-        guard KeychainStorage.shared.hasToken else {
-            rebuildMenu()
-            return
-        }
 
         isRefreshing = true
         rebuildMenu()

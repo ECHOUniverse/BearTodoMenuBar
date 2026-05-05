@@ -52,10 +52,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         BearBookmarkManager.shared.stopAccessing()
     }
 
-    func application(_ application: NSApplication, open urls: [URL]) {
-        XCallbackClient.shared.receive(urls: urls)
-    }
-
     private func showSettingsWindow() {
         if let window = settingsWindow {
             window.makeKeyAndOrderFront(nil)

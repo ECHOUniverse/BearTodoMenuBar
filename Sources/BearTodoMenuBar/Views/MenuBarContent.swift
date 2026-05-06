@@ -3,31 +3,44 @@ import SwiftUI
 struct MenuBarContent: View {
     @ObservedObject var viewModel: MenuBarViewModel
     @Environment(\.openWindow) private var openWindow
+    @State private var animateContent = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
             headerView
-            Divider()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .opacity(animateContent ? 1 : 0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: animateContent)
+
             if !BearBookmarkManager.shared.hasBookmark {
-                Text(L10n.noDatabaseAuth)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                Divider()
-            }
-            let rows = buildSectionRows()
-            if rows.isEmpty {
-                Text(L10n.noTodos)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-            } else {
-                ForEach(rows.indices, id: \.self) { i in
-                    rows[i]
+                MenuSectionCard {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 14))
+                        Text(L10n.noDatabaseAuth)
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 6)
                 }
             }
-            Divider()
+
+            let rows = buildSectionRows()
+            if rows.isEmpty {
+                MenuSectionCard {
+                    Text(L10n.noTodos)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                }
+            } else {
+                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                    row
+                        .staggeredEntrance(index, animate: animateContent)
+                }
+            }
+
             HStack {
                 Button(L10n.settingsMenu) { openWindow(id: "settings") }
                     .buttonStyle(.plain)
@@ -37,10 +50,17 @@ struct MenuBarContent: View {
                     .buttonStyle(.plain)
                     .keyboardShortcut("q", modifiers: .command)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .opacity(animateContent ? 1 : 0)
+            .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.3), value: animateContent)
         }
-        .frame(width: 280)
+        .frame(width: 320)
+        .onAppear {
+            DispatchQueue.main.async {
+                animateContent = true
+            }
+        }
     }
 
     // MARK: - Header
@@ -50,24 +70,23 @@ struct MenuBarContent: View {
         HStack {
             if viewModel.isRefreshing {
                 Text(L10n.refreshing)
-                    .font(.caption)
+                    .font(.callout)
             } else if let lastRefresh = viewModel.lastRefreshDate {
                 HeaderRefreshButton(lastRefresh: lastRefresh, action: { viewModel.refresh() })
             } else {
                 Button(L10n.refreshNow) { viewModel.refresh() }
                     .buttonStyle(.plain)
+                    .font(.callout)
             }
             Spacer()
             let pauseTitle = viewModel.isPaused ? L10n.resumeSync : L10n.pauseSync
             Button(pauseTitle) { viewModel.togglePause() }
                 .buttonStyle(.plain)
-                .font(.caption)
+                .font(.callout)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
     }
 
-    // MARK: - Build rows (non-ViewBuilder, avoids Binding inference)
+    // MARK: - Build section card rows
 
     private func buildSectionRows() -> [AnyView] {
         var rows: [AnyView] = []
@@ -79,17 +98,20 @@ struct MenuBarContent: View {
             return rows
         }
 
-        // Bear todos
+        // Bear pending todos card
         var pendingRemaining = 15
+        var pendingItems: [AnyView] = []
         for note in bearNotes where pendingRemaining > 0 {
-            rows.append(AnyView(Text(note.title)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 2)))
+            pendingItems.append(AnyView(
+                Text(note.title)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
+            ))
             for todo in note.todos.prefix(pendingRemaining) {
-                rows.append(AnyView(BearTodoMenuItemView(
+                pendingItems.append(AnyView(BearTodoMenuItemView(
                     text: todo.text,
                     onComplete: { [weak vm = viewModel] in vm?.completeTodo(todo) },
                     onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
@@ -97,28 +119,33 @@ struct MenuBarContent: View {
                 pendingRemaining -= 1
             }
         }
+        if !pendingItems.isEmpty {
+            rows.append(AnyView(
+                MenuSectionCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(pendingItems.indices, id: \.self) { pendingItems[$0] }
+                    }
+                }
+            ))
+        }
 
-        // Completed
+        // Completed card
         if KeychainStorage.shared.isReminderSyncEnabled {
             let completed = completedNotes
             if !completed.isEmpty {
                 var compRemaining = 5
-                rows.append(AnyView(Divider()))
-                rows.append(AnyView(Text(L10n.completedSection)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 6)
-                    .padding(.bottom, 2)))
+                var completedItems: [AnyView] = []
                 for note in completed where compRemaining > 0 {
-                    rows.append(AnyView(Text(note.title)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 2)
-                        .padding(.bottom, 2)))
+                    completedItems.append(AnyView(
+                        Text(note.title)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.top, 2)
+                            .padding(.bottom, 4)
+                    ))
                     for todo in note.todos.prefix(compRemaining) {
-                        rows.append(AnyView(BearTodoMenuItemView(
+                        completedItems.append(AnyView(BearTodoMenuItemView(
                             text: todo.text,
                             onComplete: { [weak vm = viewModel] in vm?.completeTodo(todo) },
                             onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
@@ -126,19 +153,42 @@ struct MenuBarContent: View {
                         compRemaining -= 1
                     }
                 }
+                var cardContent: [AnyView] = []
+                cardContent.append(AnyView(
+                    Text(L10n.completedSection)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.top, 2)
+                        .padding(.bottom, 4)
+                ))
+                cardContent.append(AnyView(
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(completedItems.indices, id: \.self) { completedItems[$0] }
+                    }
+                ))
+                rows.append(AnyView(
+                    MenuSectionCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(cardContent.indices, id: \.self) { cardContent[$0] }
+                        }
+                    }
+                ))
             }
         }
 
-        // Reminders
+        // Reminders card
         if ReminderService.shared.isAuthorized && !reminders.isEmpty {
             var remRemaining = 20
-            rows.append(AnyView(Divider()))
-            rows.append(AnyView(Text(L10n.remindersSection)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 2)))
+            var reminderItems: [AnyView] = []
+            reminderItems.append(AnyView(
+                Text(L10n.remindersSection)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
+            ))
             for category in ReminderDueCategory.allCases where remRemaining > 0 {
                 let filtered = reminders.filter { $0.dueCategory == category }
                 guard !filtered.isEmpty else { continue }
@@ -150,13 +200,15 @@ struct MenuBarContent: View {
                     case .unscheduled: return L10n.unscheduledSection
                     }
                 }()
-                rows.append(AnyView(Text("> \(catTitle)")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)))
+                reminderItems.append(AnyView(
+                    Text(catTitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                ))
                 for reminder in filtered.prefix(remRemaining) {
-                    rows.append(AnyView(ReminderMenuItemView(
+                    reminderItems.append(AnyView(ReminderMenuItemView(
                         title: reminder.title,
                         reminderIdentifier: reminder.reminderIdentifier,
                         onToggleComplete: { id, completion in
@@ -167,9 +219,16 @@ struct MenuBarContent: View {
                     remRemaining -= 1
                 }
             }
+            rows.append(AnyView(
+                MenuSectionCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(reminderItems.indices, id: \.self) { reminderItems[$0] }
+                    }
+                }
+            ))
         }
 
-        // More items
+        // More items indicator
         let pendCnt = bearNotes.flatMap(\.todos).count
         let compCnt = completedNotes.flatMap(\.todos).count
         let pendRem = pendCnt - min(pendCnt, 15)
@@ -177,11 +236,14 @@ struct MenuBarContent: View {
         let remdRem = reminders.count - min(reminders.count, 20)
         let total = pendRem + compRem + remdRem
         if total > 0 {
-            rows.append(AnyView(Text(L10n.moreItems(total))
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)))
+            rows.append(AnyView(
+                MenuSectionCard {
+                    Text(L10n.moreItems(total))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                }
+            ))
         }
 
         return rows
@@ -198,6 +260,6 @@ private struct HeaderRefreshButton: View {
         let timeString = formatter.localizedString(for: lastRefresh, relativeTo: Date())
         return Button(L10n.lastUpdate(timeString), action: action)
             .buttonStyle(.plain)
-            .font(.caption)
+            .font(.callout)
     }
 }

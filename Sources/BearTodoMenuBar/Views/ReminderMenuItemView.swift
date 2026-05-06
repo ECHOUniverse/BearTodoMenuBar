@@ -11,13 +11,16 @@ struct ReminderMenuItemView: View {
     @State private var showFailed = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: iconName)
-                .font(.system(size: 11))
-                .foregroundColor(isCompleting || isCompleted ? .accentColor : .secondary)
-                .frame(width: 14, height: 14)
-                .contentShape(.rect)
-                .onTapGesture { handleCircleTap() }
+        HStack(spacing: 8) {
+            Button {
+                handleCircleTap()
+            } label: {
+                Image(systemName: iconName)
+                    .font(.system(size: 12))
+                    .foregroundColor(isCompleting || isCompleted ? .accentColor : .secondary)
+                    .frame(width: 16, height: 16)
+            }
+            .buttonStyle(SpringPressButtonStyle())
 
             Text(title)
                 .font(.body)
@@ -25,12 +28,12 @@ struct ReminderMenuItemView: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
         .opacity(isCompleted ? 0 : 1)
-        .animation(.default, value: isCompleting)
-        .animation(.default, value: isCompleted)
-        .animation(.default, value: showFailed)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isCompleting)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isCompleted)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: showFailed)
     }
 
     private var iconName: String {
@@ -41,20 +44,20 @@ struct ReminderMenuItemView: View {
 
     private func handleCircleTap() {
         guard !isCompleting, !isCompleted else { return }
-        withAnimation(.default) { isCompleting = true }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { isCompleting = true }
         onToggleComplete(reminderIdentifier) { success in
             if success {
-                withAnimation(.default) { isCompleted = true }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { isCompleted = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     onRequestRefresh()
                 }
             } else {
-                withAnimation(.default) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     isCompleting = false
                     showFailed = true
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(.default) { showFailed = false }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { showFailed = false }
                 }
             }
         }

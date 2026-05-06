@@ -5,7 +5,6 @@ import SwiftUI
 @MainActor
 final class MenuBarViewModel: ObservableObject {
     @Published var noteTodos: [NoteTodos] = []
-    @Published var completedNoteTodos: [NoteTodos] = []
     @Published var systemReminders: [SystemReminderItem] = []
     @Published var lastRefreshDate: Date?
     @Published var isRefreshing = false
@@ -123,34 +122,28 @@ final class MenuBarViewModel: ObservableObject {
             case .success(let notes):
                 let allTodos = notes.flatMap { $0.todos }
                 ReminderService.shared.sync(todos: allTodos) { completedKeys in
-                    var pendingNotes: [NoteTodos] = []
-                    var completedNotes: [NoteTodos] = []
-
-                    for note in notes {
-                        var pendingTodos: [TodoItem] = []
-                        var completedTodos: [TodoItem] = []
-
-                        for todo in note.todos {
+                    let completedKeySet = completedKeys
+                    if !completedKeySet.isEmpty {
+                        for todo in allTodos {
                             let key = todo.noteId + "|" + String(todo.lineNumber)
-                            var updatedTodo = todo
-                            updatedTodo.isReminderCompleted = completedKeys.contains(key)
-                            if updatedTodo.isReminderCompleted {
-                                completedTodos.append(updatedTodo)
-                            } else {
-                                pendingTodos.append(updatedTodo)
+                            if completedKeySet.contains(key) {
+                                BearService.shared.completeTodoInBear(todo: todo) { _ in }
                             }
                         }
+                    }
 
+                    var pendingNotes: [NoteTodos] = []
+                    for note in notes {
+                        let pendingTodos = note.todos.filter { todo in
+                            let key = todo.noteId + "|" + String(todo.lineNumber)
+                            return !completedKeySet.contains(key)
+                        }
                         if !pendingTodos.isEmpty {
                             pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: pendingTodos))
-                        }
-                        if !completedTodos.isEmpty {
-                            completedNotes.append(NoteTodos(id: note.id, title: note.title, todos: completedTodos))
                         }
                     }
 
                     self.noteTodos = pendingNotes
-                    self.completedNoteTodos = completedNotes
 
                     ReminderService.shared.fetchUncompletedReminders { items in
                         self.systemReminders = items
@@ -161,7 +154,6 @@ final class MenuBarViewModel: ObservableObject {
             case .failure(let error):
                 print("Refresh failed: \(error)")
                 self.noteTodos = []
-                self.completedNoteTodos = []
                 self.systemReminders = []
                 self.isRefreshing = false
                 self.lastRefreshDate = Date()

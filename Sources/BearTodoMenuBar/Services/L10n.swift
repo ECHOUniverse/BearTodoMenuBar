@@ -78,7 +78,6 @@ final class L10n: ObservableObject {
         case refreshNow
         case noDatabaseAuth
         case noTodos
-        case completedSection
         case moreItems
         case openInBear
         case settingsMenu
@@ -134,7 +133,6 @@ final class L10n: ObservableObject {
             .refreshNow: "立即刷新",
             .noDatabaseAuth: "⚠️ 未授权数据库访问，自动刷新不可用",
             .noTodos: "暂无待办事项",
-            .completedSection: "已完成（来自提醒事项）",
             .moreItems: "更多...（还有 %d 条）",
             .openInBear: "在 Bear 中打开",
             .settingsMenu: "设置...",
@@ -190,7 +188,6 @@ final class L10n: ObservableObject {
             .refreshNow: "Refresh Now",
             .noDatabaseAuth: "⚠️ Database access not authorized, auto-refresh unavailable",
             .noTodos: "No todo items",
-            .completedSection: "Completed (from Reminders)",
             .moreItems: "More... (%d remaining)",
             .openInBear: "Open in Bear",
             .settingsMenu: "Settings...",
@@ -254,7 +251,6 @@ final class L10n: ObservableObject {
     static var refreshNow: String { tr(.refreshNow) }
     static var noDatabaseAuth: String { tr(.noDatabaseAuth) }
     static var noTodos: String { tr(.noTodos) }
-    static var completedSection: String { tr(.completedSection) }
     static var openInBear: String { tr(.openInBear) }
     static var settingsMenu: String { tr(.settingsMenu) }
     static var quit: String { tr(.quit) }

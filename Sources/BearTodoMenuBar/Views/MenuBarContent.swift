@@ -91,10 +91,9 @@ struct MenuBarContent: View {
     private func buildSectionRows() -> [AnyView] {
         var rows: [AnyView] = []
         let bearNotes = viewModel.noteTodos
-        let completedNotes = viewModel.completedNoteTodos
         let reminders = viewModel.systemReminders
 
-        if bearNotes.flatMap(\.todos).isEmpty && completedNotes.flatMap(\.todos).isEmpty && reminders.isEmpty {
+        if bearNotes.flatMap(\.todos).isEmpty && reminders.isEmpty {
             return rows
         }
 
@@ -127,54 +126,6 @@ struct MenuBarContent: View {
                     }
                 }
             ))
-        }
-
-        // Completed card
-        if KeychainStorage.shared.isReminderSyncEnabled {
-            let completed = completedNotes
-            if !completed.isEmpty {
-                var compRemaining = 5
-                var completedItems: [AnyView] = []
-                for note in completed where compRemaining > 0 {
-                    completedItems.append(AnyView(
-                        Text(note.title)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.top, 2)
-                            .padding(.bottom, 4)
-                    ))
-                    for todo in note.todos.prefix(compRemaining) {
-                        completedItems.append(AnyView(BearTodoMenuItemView(
-                            text: todo.text,
-                            onComplete: { [weak vm = viewModel] in vm?.completeTodo(todo) },
-                            onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
-                        )))
-                        compRemaining -= 1
-                    }
-                }
-                var cardContent: [AnyView] = []
-                cardContent.append(AnyView(
-                    Text(L10n.completedSection)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.top, 2)
-                        .padding(.bottom, 4)
-                ))
-                cardContent.append(AnyView(
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(completedItems.indices, id: \.self) { completedItems[$0] }
-                    }
-                ))
-                rows.append(AnyView(
-                    MenuSectionCard {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(cardContent.indices, id: \.self) { cardContent[$0] }
-                        }
-                    }
-                ))
-            }
         }
 
         // Reminders card
@@ -230,11 +181,9 @@ struct MenuBarContent: View {
 
         // More items indicator
         let pendCnt = bearNotes.flatMap(\.todos).count
-        let compCnt = completedNotes.flatMap(\.todos).count
         let pendRem = pendCnt - min(pendCnt, 15)
-        let compRem = compCnt - min(compCnt, 5)
         let remdRem = reminders.count - min(reminders.count, 20)
-        let total = pendRem + compRem + remdRem
+        let total = pendRem + remdRem
         if total > 0 {
             rows.append(AnyView(
                 MenuSectionCard {

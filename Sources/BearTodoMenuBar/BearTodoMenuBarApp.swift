@@ -4,29 +4,29 @@ import ServiceManagement
 @main
 struct BearTodoMenuBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var viewModel = MenuBarViewModel()
 
     var body: some Scene {
-        Settings {
-            EmptyView()
+        MenuBarExtra("Bear Todo", systemImage: "checklist") {
+            MenuBarContent(viewModel: viewModel)
         }
+        .menuBarExtraStyle(.window)
+
+        Window(L10n.settings, id: "settings") {
+            SettingsView()
+                .frame(width: 420)
+        }
+        .windowResizability(.contentSize)
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var menuBarController: MenuBarController?
-    private var settingsWindow: NSWindow?
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         let accessGranted = BearBookmarkManager.shared.startAccessing()
         if !accessGranted {
             print("Warning: Bear database security-scoped resource access not granted")
-        }
-
-        menuBarController = MenuBarController()
-        menuBarController?.onOpenSettings = { [weak self] in
-            self?.showSettingsWindow()
         }
 
         // Sync persisted OS-level states on launch (handles reinstall scenarios
@@ -50,33 +50,5 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         BearBookmarkManager.shared.stopAccessing()
-    }
-
-    private func showSettingsWindow() {
-        if let window = settingsWindow {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        let contentView = SettingsView(onClose: { [weak self] in
-            self?.settingsWindow?.close()
-        })
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 520),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = L10n.settings
-        window.contentView = NSHostingView(rootView: contentView)
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.level = .floating
-
-        settingsWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 }

@@ -3,7 +3,6 @@ import SwiftUI
 struct ReminderMenuItemView: View {
     let title: String
     let reminderIdentifier: String
-    let maxWidth: CGFloat
     var onToggleComplete: (String, @escaping (Bool) -> Void) -> Void
     var onRequestRefresh: () -> Void
 
@@ -24,11 +23,10 @@ struct ReminderMenuItemView: View {
                 .font(.body)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .onTapGesture { openReminders() }
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 2)
-        .frame(width: maxWidth, alignment: .leading)
         .opacity(isCompleted ? 0 : 1)
         .animation(.default, value: isCompleting)
         .animation(.default, value: isCompleted)
@@ -43,9 +41,7 @@ struct ReminderMenuItemView: View {
 
     private func handleCircleTap() {
         guard !isCompleting, !isCompleted else { return }
-
         withAnimation(.default) { isCompleting = true }
-
         onToggleComplete(reminderIdentifier) { success in
             if success {
                 withAnimation(.default) { isCompleted = true }
@@ -62,9 +58,5 @@ struct ReminderMenuItemView: View {
                 }
             }
         }
-    }
-
-    private func openReminders() {
-        NSWorkspace.shared.open(URL(string: "x-apple-reminderkit://")!)
     }
 }

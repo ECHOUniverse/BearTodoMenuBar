@@ -82,14 +82,11 @@ struct SettingsView: View {
     @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
     @State private var syncIntervalIndex: Double = 0
-    @State private var animateContent = false
+    @State private var animateContent = true
 
     private let syncValues = [0, 1, 3, 5, 7]
 
-    var onClose: (() -> Void)?
-
-    init(onClose: (() -> Void)? = nil) {
-        self.onClose = onClose
+    init() {
         // Initialize persisted toggle states before the view renders,
         // so onChange handlers don't fire on initial appearance.
         _isReminderSyncEnabled = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
@@ -287,12 +284,16 @@ struct SettingsView: View {
                 .padding(24)
 
             }
-            .frame(minWidth: 420, maxWidth: .infinity)
+            .frame(width: 420)
             .onAppear {
                 isAuthorized = BearBookmarkManager.shared.hasBookmark
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-                animateContent = true
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.title == L10n.settings {
+                    window.level = .floating
+                    break
+                }
             }
         }
     }

@@ -2,20 +2,9 @@ import Cocoa
 import EventKit
 import SwiftUI
 
-private var kNoteIdKey: UInt8 = 0
-
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     private static let menuItemMaxWidth: CGFloat = 280
-    private static var redDotImage: NSImage = {
-        let size = NSSize(width: 8, height: 8)
-        let image = NSImage(size: size)
-        image.lockFocus()
-        NSColor.systemRed.setFill()
-        NSBezierPath(ovalIn: NSRect(origin: .zero, size: size)).fill()
-        image.unlockFocus()
-        return image
-    }()
     private var statusItem: NSStatusItem?
     private var noteTodos: [NoteTodos] = []
     private var completedNoteTodos: [NoteTodos] = []
@@ -205,20 +194,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         guard pendingDisplayed < maxPending else { break }
 
                         let todoItem = NSMenuItem()
-                        let view = makeWrappingMenuItemView(text: todo.text)
-                        bindClickAction(to: view, noteId: todo.noteId)
-                        if todo.isReminderCompleted {
-                            if let label = view.subviews.first(where: { $0 is NSTextField }) as? NSTextField {
-                                label.attributedStringValue = NSAttributedString(
-                                    string: todo.text,
-                                    attributes: [
-                                        .foregroundColor: NSColor.tertiaryLabelColor,
-                                        .strikethroughStyle: NSUnderlineStyle.single.rawValue
-                                    ]
-                                )
-                            }
-                        }
-                        todoItem.view = view
+                        todoItem.view = makeTodoMenuItemView(todo: todo)
                         menu.addItem(todoItem)
                         pendingDisplayed += 1
                     }
@@ -258,18 +234,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                         guard completedDisplayed < maxCompleted else { break }
 
                         let todoItem = NSMenuItem()
-                        let view = makeWrappingMenuItemView(text: todo.text, showRedDot: false)
-                        bindClickAction(to: view, noteId: todo.noteId)
-                        if let label = view.subviews.first(where: { $0 is NSTextField }) as? NSTextField {
-                            label.attributedStringValue = NSAttributedString(
-                                string: todo.text,
-                                attributes: [
-                                    .foregroundColor: NSColor.tertiaryLabelColor,
-                                    .strikethroughStyle: NSUnderlineStyle.single.rawValue
-                                ]
-                            )
-                        }
-                        todoItem.view = view
+                        todoItem.view = makeTodoMenuItemView(todo: todo)
                         menu.addItem(todoItem)
                         completedDisplayed += 1
                     }
@@ -343,66 +308,24 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         statusItem?.menu = menu
     }
 
-    private func makeWrappingMenuItemView(text: String, showRedDot: Bool = true) -> NSView {
-        let container = NSView(frame: .zero)
-
-        let label = NSTextField(wrappingLabelWithString: text)
-        label.isEditable = false
-        label.isSelectable = false
-        label.isBordered = false
-        label.drawsBackground = false
-        label.lineBreakMode = .byWordWrapping
-        label.font = NSFont.menuFont(ofSize: 0)
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        container.addSubview(label)
-
-        if showRedDot {
-            let imageView = NSImageView(frame: .zero)
-            imageView.image = Self.redDotImage
-            imageView.translatesAutoresizingMaskIntoConstraints = false
-            container.addSubview(imageView)
-
-            label.preferredMaxLayoutWidth = Self.menuItemMaxWidth - 30
-
-            NSLayoutConstraint.activate([
-                imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
-                imageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-                imageView.widthAnchor.constraint(equalToConstant: 8),
-                imageView.heightAnchor.constraint(equalToConstant: 8),
-                label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
-                label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
-                label.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
-                label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2)
-            ])
-        } else {
-            label.preferredMaxLayoutWidth = Self.menuItemMaxWidth - 20
-
-            NSLayoutConstraint.activate([
-                label.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
-                label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
-                label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
-                label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10)
-            ])
-        }
-
-        let fitted = label.fittingSize
-        container.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: max(fitted.height + 4, CGFloat(22)))
-
-        return container
-    }
-
-    private func bindClickAction(to view: NSView, noteId: String) {
-        let click = NSClickGestureRecognizer(target: self, action: #selector(wrappingItemClicked(_:)))
-        view.addGestureRecognizer(click)
-        objc_setAssociatedObject(view, &kNoteIdKey, noteId, .OBJC_ASSOCIATION_RETAIN)
-    }
-
-    @objc private func wrappingItemClicked(_ sender: NSClickGestureRecognizer) {
-        guard let view = sender.view,
-              let noteId = objc_getAssociatedObject(view, &kNoteIdKey) as? String else { return }
-        BearService.shared.openNote(id: noteId)
-        view.enclosingMenuItem?.menu?.cancelTracking()
+    private func makeTodoMenuItemView(todo: TodoItem) -> NSView {
+        let hostingView = NSHostingView(rootView: BearTodoMenuItemView(
+            text: todo.text,
+            maxWidth: Self.menuItemMaxWidth,
+            onComplete: { [weak self] in
+                BearService.shared.completeTodoInBear(todo: todo) { success in
+                    guard success else { return }
+                    self?.refresh()
+                }
+            },
+            onOpenNote: { [weak self] in
+                BearService.shared.openNote(id: todo.noteId)
+                self?.statusItem?.menu?.cancelTracking()
+            }
+        ))
+        let size = hostingView.fittingSize
+        hostingView.frame = NSRect(x: 0, y: 0, width: Self.menuItemMaxWidth, height: max(size.height, 22))
+        return hostingView
     }
 
     private func makeReminderMenuItemView(reminder: SystemReminderItem) -> NSView {

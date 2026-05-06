@@ -87,8 +87,36 @@ class BearService: BearServiceProtocol {
         }
     }
 
+    func completeTodoInBear(todo: TodoItem, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let escapedText = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
+            let oldLine = "- [ ] \(escapedText)"
+            let newLine = "- [x] \(escapedText)"
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cliPath)
+            process.arguments = ["edit", todo.noteId, "--find", oldLine, "--replace", newLine, "--all"]
+
+            let outputPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = Pipe()
+
+            do {
+                try process.run()
+                process.waitUntilExit()
+            } catch {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+
+            DispatchQueue.main.async { completion(process.terminationStatus == 0) }
+        }
+    }
+
     func openNote(id: String) {
-        guard let url = URL(string: "bear://x-callback-url/open-note?id=\(id)") else { return }
-        NSWorkspace.shared.open(url)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: cliPath)
+        process.arguments = ["open", id]
+        try? process.run()
     }
 }

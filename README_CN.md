@@ -6,7 +6,7 @@
 [<img src="https://img.shields.io/github/v/release/ECHOUniverse/BearTodoMenuBar.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/releases)
 [<img src="https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml/badge.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml)
 
-一个 macOS 菜单栏小工具，自动读取 [Bear](https://bear.app/) 笔记中未勾选的待办事项，并展示在菜单栏中。支持点击待办直接跳转回 Bear 对应笔记。
+一个 macOS 菜单栏小工具，自动读取 [Bear](https://bear.app/) 笔记中未勾选的待办事项，并展示在菜单栏中。点击即可在 Bear 中标记完成——使用红色圆圈指示器，风格参考系统提醒事项。
 
 > [English Documentation →](README.md)
 
@@ -14,9 +14,9 @@
 
 - 从 Bear 中拉取所有包含未勾选复选框（`- [ ]`）的笔记
 - 在菜单栏中按笔记分组展示待办事项
-- 点击待办即可在 Bear 中打开对应笔记
+- **一键标记完成** — 点击红色圆圈直接在 Bear 中将 `- [ ]` 变为 `- [x]`
+- **视觉指示器** — 未完成显示红色空心圆 ◯，已完成显示实心圆（来自提醒事项同步）
 - 通过监视 Bear 数据库变化实现自动刷新（需授权数据库访问）
-- 通过 x-callback-url 与 Bear 通信，数据不落第三方服务器
 
 ## 下载与安装
 
@@ -68,7 +68,7 @@ swift build
 3. 复制生成的 Token
 4. 粘贴到本应用的「Bear API Token」输入框中，点击保存
 
-> **注意**：Token 是 Bear 用于 x-callback-url 通信的凭证，请妥善保管。
+> **注意**：Token 是 Bear 用于 bearcli 通信的凭证，请妥善保管。
 
 ### 2. 授权数据库访问
 
@@ -111,7 +111,7 @@ swift build
 
 ## 技术说明
 
-- 使用 Bear 的 [x-callback-url](https://bear.app/xcallbackurl/) 获取笔记数据
+- 使用 Bear 的 [bearcli](https://bear.app/) 获取和编辑笔记数据
 - 使用 `DispatchSourceFileSystemObject` 监听 `database.sqlite` 文件变化实现自动刷新
 - 使用 Security-Scoped Bookmark 持久化数据库目录访问权限
 

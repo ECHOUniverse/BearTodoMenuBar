@@ -6,7 +6,7 @@
 [<img src="https://img.shields.io/github/v/release/ECHOUniverse/BearTodoMenuBar.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/releases)
 [<img src="https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml/badge.svg?style=flat-square">](https://github.com/ECHOUniverse/BearTodoMenuBar/actions/workflows/build.yml)
 
-A macOS menu bar utility that automatically reads unchecked todo items from your [Bear](https://bear.app/) notes and displays them in the menu bar. Click any todo to jump directly back to the corresponding note in Bear.
+A macOS menu bar utility that automatically reads unchecked todo items from your [Bear](https://bear.app/) notes and displays them in the menu bar. Click any todo to mark it complete in Bear — styled like system Reminders with red circle indicators.
 
 > [中文文档 (Chinese) →](README_CN.md)
 
@@ -14,9 +14,9 @@ A macOS menu bar utility that automatically reads unchecked todo items from your
 
 - Pull all notes containing unchecked checkboxes (`- [ ]`) from Bear
 - Display todo items grouped by note in the menu bar
-- Click a todo to open the corresponding note in Bear
+- **Mark todos complete** — click a red circle to directly toggle `- [ ]` to `- [x]` in Bear
+- **Visual indicators** — unchecked shows a red hollow circle ◯, completed shows a filled circle (from Reminders sync)
 - Auto-refresh by monitoring Bear database changes (requires database access authorization)
-- Communicates with Bear via x-callback-url; no data ever leaves your device
 
 ## Download & Installation
 
@@ -68,7 +68,7 @@ After launching the app for the first time, click the menu bar icon → **Settin
 3. Copy the generated Token
 4. Paste it into the **Bear API Token** field in the app and click Save
 
-> **Note**: The Token is used by Bear for x-callback-url communication. Please keep it safe.
+> **Note**: The Token is used by Bear for bearcli communication. Please keep it safe.
 
 ### 2. Authorize Database Access
 
@@ -111,7 +111,7 @@ Once authorized, the app will monitor database changes in real time and automati
 
 ## Technical Notes
 
-- Uses Bear's [x-callback-url](https://bear.app/xcallbackurl/) to fetch note data
+- Uses Bear's [bearcli](https://bear.app/) to fetch and edit note data
 - Uses `DispatchSourceFileSystemObject` to monitor `database.sqlite` file changes for auto-refresh
 - Uses Security-Scoped Bookmark to persist database directory access permissions
 

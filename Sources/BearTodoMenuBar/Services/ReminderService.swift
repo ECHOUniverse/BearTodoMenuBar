@@ -177,13 +177,16 @@ final class ReminderService {
     }
 
     func fetchUncompletedReminders(completion: @escaping ([SystemReminderItem]) -> Void) {
+        let freshStore = EKEventStore()
+
+
         let status = EKEventStore.authorizationStatus(for: .reminder)
         guard isAuthorizedStatus(status) else {
             completion([])
             return
         }
 
-        let allCalendars = eventStore.calendars(for: .reminder)
+        let allCalendars = freshStore.calendars(for: .reminder)
         let filteredCalendars = allCalendars.filter { $0.title != calendarTitle }
 
         guard !filteredCalendars.isEmpty else {
@@ -191,12 +194,13 @@ final class ReminderService {
             return
         }
 
-        let predicate = eventStore.predicateForReminders(in: filteredCalendars)
-        eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
+        let predicate = freshStore.predicateForReminders(in: filteredCalendars)
+        freshStore.fetchReminders(matching: predicate) { [weak self] reminders in
             guard let self = self else {
                 completion([])
                 return
             }
+
 
             let todayComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
             let tomorrowDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!

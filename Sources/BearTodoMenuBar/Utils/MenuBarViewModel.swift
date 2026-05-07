@@ -57,6 +57,12 @@ final class MenuBarViewModel: ObservableObject {
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(menuDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(syncIntervalDidChange),
             name: .syncIntervalDidChange,
             object: nil
@@ -93,9 +99,12 @@ final class MenuBarViewModel: ObservableObject {
         guard KeychainStorage.shared.isReminderSyncEnabled else { return }
         remindersDebounce.debounce { [weak self] in
             guard let self else { return }
-            guard !self.remindersIsFrontmost else { return }
             self.refresh()
         }
+    }
+
+    @objc private func menuDidBecomeActive() {
+        refresh()
     }
 
     @objc private func languageDidChange() {
@@ -148,8 +157,18 @@ final class MenuBarViewModel: ObservableObject {
                     var completedNotes: [NoteTodos] = []
 
                     for note in notes {
-                        let active = note.todos.filter { !$0.isCompleted }
-                        let completed = note.todos.filter { $0.isCompleted }
+                        let active = note.todos.filter { todo in
+                            let key = todo.noteId + "|" + String(todo.lineNumber)
+                            if syncResult.completedKeys.contains(key) { return false }
+                            if syncResult.uncompletedKeys.contains(key) { return true }
+                            return !todo.isCompleted
+                        }
+                        let completed = note.todos.filter { todo in
+                            let key = todo.noteId + "|" + String(todo.lineNumber)
+                            if syncResult.uncompletedKeys.contains(key) { return false }
+                            if syncResult.completedKeys.contains(key) { return true }
+                            return todo.isCompleted
+                        }
                         if !active.isEmpty {
                             activeNotes.append(NoteTodos(
                                 id: note.id, title: note.title,

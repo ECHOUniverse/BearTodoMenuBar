@@ -115,7 +115,7 @@ struct MenuBarContent: View {
                     isCompleted: false,
                     onToggle: { [weak vm = viewModel] in vm?.completeTodo(todo) },
                     onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
-                )))
+                ).id("\(todo.noteId)|\(todo.lineNumber)")))
                 pendingRemaining -= 1
             }
         }
@@ -156,7 +156,7 @@ struct MenuBarContent: View {
                         isCompleted: true,
                         onToggle: { [weak vm = viewModel] in vm?.uncompleteTodo(todo) },
                         onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
-                    )))
+                    ).id("\(todo.noteId)|\(todo.lineNumber)")))
                     completedRemaining -= 1
                 }
             }
@@ -210,7 +210,7 @@ struct MenuBarContent: View {
                             vm?.openReminder(reminder.reminderIdentifier)
                         },
                         onRequestRefresh: { [weak vm = viewModel] in vm?.refresh() }
-                    )))
+                    ).id(reminder.reminderIdentifier)))
                     remRemaining -= 1
                 }
             }

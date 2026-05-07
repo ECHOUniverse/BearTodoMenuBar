@@ -36,6 +36,8 @@ struct BearTodoMenuItemView: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 6)
         .opacity(isAnimating && !isCompleted ? 0 : 1)
+        .frame(height: isAnimating && !isCompleted ? 0 : nil)
+        .clipped()
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isAnimating)
     }
 

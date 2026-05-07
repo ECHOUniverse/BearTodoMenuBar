@@ -4,6 +4,7 @@ struct ReminderMenuItemView: View {
     let title: String
     let reminderIdentifier: String
     var onToggleComplete: (String, @escaping (Bool) -> Void) -> Void
+    var onOpenReminder: () -> Void
     var onRequestRefresh: () -> Void
 
     @State private var isCompleting = false
@@ -22,11 +23,16 @@ struct ReminderMenuItemView: View {
             }
             .buttonStyle(SpringPressButtonStyle())
 
-            Text(title)
-                .font(.body)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                onOpenReminder()
+            } label: {
+                Text(title)
+                    .font(.body)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 6)

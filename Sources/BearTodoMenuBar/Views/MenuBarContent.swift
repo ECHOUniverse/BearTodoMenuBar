@@ -93,7 +93,7 @@ struct MenuBarContent: View {
         let bearNotes = viewModel.noteTodos
         let reminders = viewModel.systemReminders
 
-        if bearNotes.flatMap(\.todos).isEmpty && reminders.isEmpty {
+        if bearNotes.flatMap(\.todos).isEmpty && viewModel.completedNoteTodos.flatMap(\.todos).isEmpty && reminders.isEmpty {
             return rows
         }
 
@@ -112,7 +112,8 @@ struct MenuBarContent: View {
             for todo in note.todos.prefix(pendingRemaining) {
                 pendingItems.append(AnyView(BearTodoMenuItemView(
                     text: todo.text,
-                    onComplete: { [weak vm = viewModel] in vm?.completeTodo(todo) },
+                    isCompleted: false,
+                    onToggle: { [weak vm = viewModel] in vm?.completeTodo(todo) },
                     onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
                 )))
                 pendingRemaining -= 1
@@ -123,6 +124,46 @@ struct MenuBarContent: View {
                 MenuSectionCard {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(pendingItems.indices, id: \.self) { pendingItems[$0] }
+                    }
+                }
+            ))
+        }
+
+        // Completed Bear todos card
+        let completedNotes = viewModel.completedNoteTodos
+        if !completedNotes.isEmpty {
+            var completedRemaining = 5
+            var completedItems: [AnyView] = []
+            completedItems.append(AnyView(
+                Text(L10n.completedSection)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
+            ))
+            for note in completedNotes where completedRemaining > 0 {
+                completedItems.append(AnyView(
+                    Text(note.title)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                ))
+                for todo in note.todos.prefix(completedRemaining) {
+                    completedItems.append(AnyView(BearTodoMenuItemView(
+                        text: todo.text,
+                        isCompleted: true,
+                        onToggle: { [weak vm = viewModel] in vm?.uncompleteTodo(todo) },
+                        onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
+                    )))
+                    completedRemaining -= 1
+                }
+            }
+            rows.append(AnyView(
+                MenuSectionCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(completedItems.indices, id: \.self) { completedItems[$0] }
                     }
                 }
             ))
@@ -165,6 +206,9 @@ struct MenuBarContent: View {
                         onToggleComplete: { id, completion in
                             ReminderService.shared.toggleReminderCompletion(identifier: id, completion: completion)
                         },
+                        onOpenReminder: { [weak vm = viewModel] in
+                            vm?.openReminder(reminder.reminderIdentifier)
+                        },
                         onRequestRefresh: { [weak vm = viewModel] in vm?.refresh() }
                     )))
                     remRemaining -= 1
@@ -175,22 +219,6 @@ struct MenuBarContent: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(reminderItems.indices, id: \.self) { reminderItems[$0] }
                     }
-                }
-            ))
-        }
-
-        // More items indicator
-        let pendCnt = bearNotes.flatMap(\.todos).count
-        let pendRem = pendCnt - min(pendCnt, 15)
-        let remdRem = reminders.count - min(reminders.count, 20)
-        let total = pendRem + remdRem
-        if total > 0 {
-            rows.append(AnyView(
-                MenuSectionCard {
-                    Text(L10n.moreItems(total))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
                 }
             ))
         }

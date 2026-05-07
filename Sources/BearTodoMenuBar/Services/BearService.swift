@@ -27,7 +27,7 @@ class BearService: BearServiceProtocol {
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: cliPath)
-            process.arguments = ["search", "--query", "@todo", "--format", "json", "--fields", "id,title,content"]
+            process.arguments = ["search", "--query", "@todo", "--format", "json", "--fields", "id,title,content,modified"]
 
             let outputPipe = Pipe()
             process.standardOutput = outputPipe
@@ -63,17 +63,26 @@ class BearService: BearServiceProtocol {
                 let id: String
                 let title: String
                 let content: String
+                let modified: Date?
             }
 
             do {
-                let notes = try JSONDecoder().decode([CLINote].self, from: outputData)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let notes = try decoder.decode([CLINote].self, from: outputData)
                 let noteTodosList = notes.compactMap { note -> NoteTodos? in
-                    let unchecked = TodoParser.parseUnchecked(from: note.content)
-                    guard !unchecked.isEmpty else { return nil }
-                    let todos = unchecked.map { line in
-                        TodoItem(text: line.text, noteId: note.id, noteTitle: note.title, lineNumber: line.lineNumber)
+                    let allTodos = TodoParser.parseAllTodos(from: note.content)
+                    guard !allTodos.isEmpty else { return nil }
+                    let todos = allTodos.map { line in
+                        TodoItem(
+                            text: line.text,
+                            noteId: note.id,
+                            noteTitle: note.title,
+                            lineNumber: line.lineNumber,
+                            isCompleted: line.isCompleted
+                        )
                     }
-                    return NoteTodos(id: note.id, title: note.title, todos: todos)
+                    return NoteTodos(id: note.id, title: note.title, todos: todos, modified: note.modified)
                 }
 
                 DispatchQueue.main.async {
@@ -92,6 +101,32 @@ class BearService: BearServiceProtocol {
             let escapedText = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
             let oldLine = "- [ ] \(escapedText)"
             let newLine = "- [x] \(escapedText)"
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cliPath)
+            process.arguments = ["edit", todo.noteId, "--find", oldLine, "--replace", newLine, "--all"]
+
+            let outputPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = Pipe()
+
+            do {
+                try process.run()
+                process.waitUntilExit()
+            } catch {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+
+            DispatchQueue.main.async { completion(process.terminationStatus == 0) }
+        }
+    }
+
+    func uncompleteTodoInBear(todo: TodoItem, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let escapedText = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
+            let oldLine = "- [x] \(escapedText)"
+            let newLine = "- [ ] \(escapedText)"
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: cliPath)

@@ -6,12 +6,19 @@ struct TodoItem: Identifiable {
     let noteId: String
     let noteTitle: String
     let lineNumber: Int
+    let isCompleted: Bool
 }
 
 struct NoteTodos: Identifiable {
     let id: String
     let title: String
     let todos: [TodoItem]
+    let modified: Date?
+}
+
+struct SyncResult {
+    let completedKeys: Set<String>
+    let uncompletedKeys: Set<String>
 }
 
 enum ReminderDueCategory: String, CaseIterable {

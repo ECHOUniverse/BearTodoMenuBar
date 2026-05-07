@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class MenuBarViewModel: ObservableObject {
     @Published var noteTodos: [NoteTodos] = []
+    @Published var completedNoteTodos: [NoteTodos] = []
     @Published var systemReminders: [SystemReminderItem] = []
     @Published var lastRefreshDate: Date?
     @Published var isRefreshing = false
@@ -121,29 +122,50 @@ final class MenuBarViewModel: ObservableObject {
             switch result {
             case .success(let notes):
                 let allTodos = notes.flatMap { $0.todos }
-                ReminderService.shared.sync(todos: allTodos) { completedKeys in
-                    let completedKeySet = completedKeys
-                    if !completedKeySet.isEmpty {
+                let noteModDates: [String: Date?] = Dictionary(
+                    uniqueKeysWithValues: notes.map { ($0.id, $0.modified) }
+                )
+
+                ReminderService.shared.sync(todos: allTodos, noteModifiedDates: noteModDates) { syncResult in
+                    if !syncResult.completedKeys.isEmpty {
                         for todo in allTodos {
                             let key = todo.noteId + "|" + String(todo.lineNumber)
-                            if completedKeySet.contains(key) {
+                            if syncResult.completedKeys.contains(key) {
                                 BearService.shared.completeTodoInBear(todo: todo) { _ in }
                             }
                         }
                     }
-
-                    var pendingNotes: [NoteTodos] = []
-                    for note in notes {
-                        let pendingTodos = note.todos.filter { todo in
+                    if !syncResult.uncompletedKeys.isEmpty {
+                        for todo in allTodos {
                             let key = todo.noteId + "|" + String(todo.lineNumber)
-                            return !completedKeySet.contains(key)
-                        }
-                        if !pendingTodos.isEmpty {
-                            pendingNotes.append(NoteTodos(id: note.id, title: note.title, todos: pendingTodos))
+                            if syncResult.uncompletedKeys.contains(key) {
+                                BearService.shared.uncompleteTodoInBear(todo: todo) { _ in }
+                            }
                         }
                     }
 
-                    self.noteTodos = pendingNotes
+                    var activeNotes: [NoteTodos] = []
+                    var completedNotes: [NoteTodos] = []
+
+                    for note in notes {
+                        let active = note.todos.filter { !$0.isCompleted }
+                        let completed = note.todos.filter { $0.isCompleted }
+                        if !active.isEmpty {
+                            activeNotes.append(NoteTodos(
+                                id: note.id, title: note.title,
+                                todos: active, modified: note.modified
+                            ))
+                        }
+                        if !completed.isEmpty {
+                            completedNotes.append(NoteTodos(
+                                id: note.id, title: note.title,
+                                todos: completed, modified: note.modified
+                            ))
+                        }
+                    }
+
+                    self.noteTodos = activeNotes
+                    self.completedNoteTodos = completedNotes
 
                     ReminderService.shared.fetchUncompletedReminders { items in
                         self.systemReminders = items
@@ -154,6 +176,7 @@ final class MenuBarViewModel: ObservableObject {
             case .failure(let error):
                 print("Refresh failed: \(error)")
                 self.noteTodos = []
+                self.completedNoteTodos = []
                 self.systemReminders = []
                 self.isRefreshing = false
                 self.lastRefreshDate = Date()
@@ -177,6 +200,17 @@ final class MenuBarViewModel: ObservableObject {
 
     func openNote(_ todo: TodoItem) {
         BearService.shared.openNote(id: todo.noteId)
+    }
+
+    func uncompleteTodo(_ todo: TodoItem) {
+        BearService.shared.uncompleteTodoInBear(todo: todo) { [weak self] success in
+            guard success else { return }
+            self?.refresh()
+        }
+    }
+
+    func openReminder(_ identifier: String) {
+        ReminderService.shared.openReminderInApp(identifier: identifier)
     }
 
     func toggleReminder(_ identifier: String) {

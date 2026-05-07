@@ -89,6 +89,7 @@ final class L10n: ObservableObject {
         case unscheduledSection
         case pauseSync
         case resumeSync
+        case completedSection
         case launchAtLogin
         case launchAtLoginToggle
         case launchAtLoginDescription
@@ -144,6 +145,7 @@ final class L10n: ObservableObject {
             .unscheduledSection: "未安排",
             .pauseSync: "暂停同步",
             .resumeSync: "开始同步",
+            .completedSection: "已完成",
             .launchAtLogin: "开机启动",
             .launchAtLoginToggle: "开机时自动启动",
             .launchAtLoginDescription: "开启后应用将在登录时自动启动",
@@ -199,6 +201,7 @@ final class L10n: ObservableObject {
             .unscheduledSection: "Unscheduled",
             .pauseSync: "Pause Sync",
             .resumeSync: "Resume Sync",
+            .completedSection: "Completed",
             .launchAtLogin: "Launch at Login",
             .launchAtLoginToggle: "Launch at Login",
             .launchAtLoginDescription: "App will automatically launch when you log in",
@@ -261,6 +264,7 @@ final class L10n: ObservableObject {
     static var unscheduledSection: String { tr(.unscheduledSection) }
     static var pauseSync: String { tr(.pauseSync) }
     static var resumeSync: String { tr(.resumeSync) }
+    static var completedSection: String { tr(.completedSection) }
     static var launchAtLogin: String { tr(.launchAtLogin) }
     static var launchAtLoginToggle: String { tr(.launchAtLoginToggle) }
     static var launchAtLoginDescription: String { tr(.launchAtLoginDescription) }

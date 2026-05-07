@@ -40,54 +40,76 @@ final class ReminderService {
         }
     }
 
-    func sync(todos: [TodoItem], completion: ((Set<String>) -> Void)? = nil) {
+    func sync(todos: [TodoItem], noteModifiedDates: [String: Date?], completion: ((SyncResult) -> Void)? = nil) {
         guard KeychainStorage.shared.isReminderSyncEnabled else {
-            completion?([])
+            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
             return
         }
 
         let status = EKEventStore.authorizationStatus(for: .reminder)
         guard isAuthorizedStatus(status) else {
             print("Reminder access not granted, skipping sync")
-            completion?([])
+            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
             return
         }
 
         guard let calendar = fetchOrCreateCalendar() else {
             print("Failed to get or create Bear calendar")
-            completion?([])
+            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
             return
         }
 
         calendarIdentifier = calendar.calendarIdentifier
 
-        let bearKeys = Set(todos.map { syncKey(for: $0) })
         let todoMap = Dictionary(uniqueKeysWithValues: todos.map { (syncKey(for: $0), $0) })
         let predicate = eventStore.predicateForReminders(in: [calendar])
 
         eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
             Task { @MainActor in
                 guard let self = self else {
-                    completion?([])
+                    completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
                     return
                 }
 
                 let existingReminders = reminders ?? []
                 var remindersToSave: [EKReminder] = []
                 var completedKeys: Set<String> = []
+                var uncompletedKeys: Set<String> = []
 
                 for reminder in existingReminders {
                     guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
 
-                    if bearKeys.contains(key) {
-                        if let todo = todoMap[key], reminder.title != todo.text {
-                            reminder.title = todo.text
-                            remindersToSave.append(reminder)
+                    if let todo = todoMap[key] {
+                        // Derive noteId from sync key for timestamp lookup
+                        let noteId = key.components(separatedBy: "|").first ?? ""
+                        let bearModDate = noteModifiedDates[noteId] ?? nil
+
+                        if !todo.isCompleted && !reminder.isCompleted {
+                            // Both unchecked: update title if changed
+                            if reminder.title != todo.text {
+                                reminder.title = todo.text
+                                remindersToSave.append(reminder)
+                            }
+                        } else if !todo.isCompleted && reminder.isCompleted {
+                            // Conflict: Bear unchecked, Reminder completed
+                            if self.reminderIsNewer(reminder: reminder, bearModified: bearModDate) {
+                                completedKeys.insert(key)
+                            } else {
+                                reminder.isCompleted = false
+                                remindersToSave.append(reminder)
+                            }
+                        } else if todo.isCompleted && !reminder.isCompleted {
+                            // Conflict: Bear checked, Reminder uncompleted
+                            if self.reminderIsNewer(reminder: reminder, bearModified: bearModDate) {
+                                uncompletedKeys.insert(key)
+                            } else {
+                                reminder.isCompleted = true
+                                remindersToSave.append(reminder)
+                            }
                         }
-                        if reminder.isCompleted {
-                            completedKeys.insert(key)
-                        }
+                        // both completed: nothing to do
                     } else {
+                        // Todo deleted from Bear
                         if !reminder.isCompleted {
                             reminder.isCompleted = true
                             remindersToSave.append(reminder)
@@ -96,7 +118,7 @@ final class ReminderService {
                 }
 
                 let existingKeys = Set(existingReminders.compactMap { self.parseSyncKey(from: $0.notes) })
-                let newTodos = todos.filter { !existingKeys.contains(self.syncKey(for: $0)) }
+                let newTodos = todos.filter { !$0.isCompleted && !existingKeys.contains(self.syncKey(for: $0)) }
 
                 for todo in newTodos {
                     let reminder = EKReminder(eventStore: self.eventStore)
@@ -143,9 +165,15 @@ final class ReminderService {
                     }
                 }
 
-                completion?(completedKeys)
+                completion?(SyncResult(completedKeys: completedKeys, uncompletedKeys: uncompletedKeys))
             }
         }
+    }
+
+    private func reminderIsNewer(reminder: EKReminder, bearModified: Date?) -> Bool {
+        let reminderDate = reminder.lastModifiedDate ?? Date.distantPast
+        let bearDate = bearModified ?? Date.distantPast
+        return reminderDate > bearDate
     }
 
     func fetchUncompletedReminders(completion: @escaping ([SystemReminderItem]) -> Void) {
@@ -226,6 +254,56 @@ final class ReminderService {
         } catch {
             print("Failed to toggle reminder completion: \(error)")
             Task { @MainActor in completion(false) }
+        }
+    }
+
+    func openReminderInApp(identifier: String) {
+        guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder,
+              let title = reminder.title else { return }
+
+        let escapedTitle = title.replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+        tell application "Reminders"
+            repeat with lst in lists
+                repeat with rmnd in (reminders of lst whose name is "\(escapedTitle)")
+                    return id of rmnd
+                end repeat
+            end repeat
+            return ""
+        end tell
+        """
+
+        let appleScript = NSAppleScript(source: script)
+        var error: NSDictionary?
+        let result = appleScript?.executeAndReturnError(&error)
+
+        if let err = error {
+            print("AppleScript error: \(err)")
+            fallbackOpenReminders()
+            return
+        }
+
+        guard let rawID = result?.stringValue, !rawID.isEmpty else {
+            fallbackOpenReminders()
+            return
+        }
+
+        // x-apple-reminder://UUID → x-apple-reminderkit://REMCDReminder/UUID
+        let deepLink = rawID.replacingOccurrences(
+            of: "x-apple-reminder://",
+            with: "x-apple-reminderkit://REMCDReminder/"
+        )
+
+        if let url = URL(string: deepLink) {
+            NSWorkspace.shared.open(url)
+        } else {
+            fallbackOpenReminders()
+        }
+    }
+
+    private func fallbackOpenReminders() {
+        if let url = URL(string: "x-apple-reminderkit://") {
+            NSWorkspace.shared.open(url)
         }
     }
 

@@ -2,19 +2,20 @@ import SwiftUI
 
 struct BearTodoMenuItemView: View {
     let text: String
-    var onComplete: () -> Void
+    let isCompleted: Bool
+    var onToggle: () -> Void
     var onOpenNote: () -> Void
 
-    @State private var isCompleting = false
+    @State private var isAnimating = false
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
                 handleCircleTap()
             } label: {
-                Image(systemName: isCompleting ? "circle.fill" : "circle")
+                Image(systemName: isAnimating ? iconFilled : iconEmpty)
                     .font(.system(size: 12))
-                    .foregroundColor(.red)
+                    .foregroundColor(isCompleted ? .green : .red)
                     .frame(width: 16, height: 16)
             }
             .buttonStyle(SpringPressButtonStyle())
@@ -26,21 +27,31 @@ struct BearTodoMenuItemView: View {
                     .font(.body)
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
+                    .strikethrough(isCompleted, color: .secondary)
+                    .foregroundColor(isCompleted ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 6)
-        .opacity(isCompleting ? 0 : 1)
-        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isCompleting)
+        .opacity(isAnimating && !isCompleted ? 0 : 1)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isAnimating)
+    }
+
+    private var iconEmpty: String {
+        isCompleted ? "checkmark.circle.fill" : "circle"
+    }
+
+    private var iconFilled: String {
+        isCompleted ? "circle" : "checkmark.circle.fill"
     }
 
     private func handleCircleTap() {
-        guard !isCompleting else { return }
-        isCompleting = true
+        guard !isAnimating else { return }
+        isAnimating = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            onComplete()
+            onToggle()
         }
     }
 }

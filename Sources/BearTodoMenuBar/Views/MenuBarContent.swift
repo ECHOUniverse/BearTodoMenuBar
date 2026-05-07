@@ -131,7 +131,7 @@ struct MenuBarContent: View {
 
         // Completed Bear todos card
         let completedNotes = viewModel.completedNoteTodos
-        if !completedNotes.isEmpty {
+        if !completedNotes.isEmpty && KeychainStorage.shared.isCompletedSectionVisible {
             var completedRemaining = 5
             var completedItems: [AnyView] = []
             completedItems.append(AnyView(

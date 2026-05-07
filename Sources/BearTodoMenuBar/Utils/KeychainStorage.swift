@@ -9,6 +9,7 @@ class KeychainStorage {
     static let shared = KeychainStorage()
     private let reminderSyncKey = "bear_reminder_sync_enabled"
     private let launchAtLoginKey = "bear_launch_at_login_enabled"
+    private let showCompletedKey = "bear_show_completed_section"
     private let syncIntervalKey = "bear_sync_interval"
     private let defaults = UserDefaults.standard
 
@@ -47,6 +48,16 @@ class KeychainStorage {
         }
         set {
             defaults.set(newValue, forKey: launchAtLoginKey)
+        }
+    }
+
+    var isCompletedSectionVisible: Bool {
+        get {
+            if defaults.object(forKey: showCompletedKey) == nil { return true }
+            return defaults.bool(forKey: showCompletedKey)
+        }
+        set {
+            defaults.set(newValue, forKey: showCompletedKey)
         }
     }
 

@@ -178,9 +178,14 @@ final class MenuBarViewModel: ObservableObject {
                         if !completed.isEmpty {
                             completedNotes.append(NoteTodos(
                                 id: note.id, title: note.title,
-                                todos: completed, modified: note.modified
+                                todos: completed.sorted { $0.lineNumber > $1.lineNumber },
+                                modified: note.modified
                             ))
                         }
+                    }
+
+                    completedNotes.sort {
+                        ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast)
                     }
 
                     self.noteTodos = activeNotes

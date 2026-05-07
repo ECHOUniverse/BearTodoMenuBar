@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var isReminderSyncEnabled: Bool = false
     @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
+    @State private var isCompletedSectionVisible: Bool = false
     @State private var syncIntervalIndex: Double = 0
     @State private var animateContent = true
 
@@ -24,6 +25,7 @@ struct SettingsView: View {
         // so onChange handlers don't fire on initial appearance.
         _isReminderSyncEnabled = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
         _isLaunchAtLoginEnabled = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
+        _isCompletedSectionVisible = State(initialValue: KeychainStorage.shared.isCompletedSectionVisible)
         let stored = KeychainStorage.shared.syncInterval
         let validValues = [0, 1, 3, 5, 7]
         _syncIntervalIndex = State(initialValue: Double(validValues.firstIndex(of: stored) ?? 0))
@@ -138,6 +140,30 @@ struct SettingsView: View {
                     }
                     .staggeredEntrance(3, animate: animateContent)
 
+                    // MARK: Completed Section Card
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                Text(L10n.showCompletedSection)
+                                    .font(.headline)
+                                Spacer()
+                            }
+
+                            Toggle(isOn: $isCompletedSectionVisible) {
+                                Text(L10n.showCompletedSectionDescription)
+                                    .font(.callout)
+                            }
+                            .toggleStyle(.switch)
+                            .onChange(of: isCompletedSectionVisible) { visible in
+                                KeychainStorage.shared.isCompletedSectionVisible = visible
+                            }
+                        }
+                    }
+                    .staggeredEntrance(4, animate: animateContent)
+
                     // MARK: Database Auth Card
                     GlassCard {
                         VStack(alignment: .leading, spacing: 12) {
@@ -177,7 +203,7 @@ struct SettingsView: View {
                             .controlSize(.regular)
                         }
                     }
-                    .staggeredEntrance(4, animate: animateContent)
+                    .staggeredEntrance(5, animate: animateContent)
 
                     // MARK: Language Card
                     GlassCard {
@@ -198,7 +224,7 @@ struct SettingsView: View {
                             .pickerStyle(.segmented)
                         }
                     }
-                    .staggeredEntrance(5, animate: animateContent)
+                    .staggeredEntrance(6, animate: animateContent)
 
                     Spacer(minLength: 4)
 
@@ -210,7 +236,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
-                    .staggeredEntrance(6, animate: animateContent)
+                    .staggeredEntrance(7, animate: animateContent)
 
                     Spacer(minLength: 8)
                 }

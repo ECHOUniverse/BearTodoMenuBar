@@ -97,6 +97,8 @@ final class L10n: ObservableObject {
         case syncIntervalTitle
         case syncIntervalImmediate
         case syncIntervalValue
+        case showCompletedSection
+        case showCompletedSectionDescription
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -152,7 +154,9 @@ final class L10n: ObservableObject {
             .syncInterval: "同步间隔",
             .syncIntervalTitle: "同步间隔",
             .syncIntervalImmediate: "立即同步",
-            .syncIntervalValue: "延迟 %d 秒后同步"
+            .syncIntervalValue: "延迟 %d 秒后同步",
+            .showCompletedSection: "显示已完成事项",
+            .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项"
         ]
 
         private static let enStrings: [StringKey: String] = [
@@ -208,7 +212,9 @@ final class L10n: ObservableObject {
             .syncInterval: "Sync Interval",
             .syncIntervalTitle: "Sync Interval",
             .syncIntervalImmediate: "Immediate",
-            .syncIntervalValue: "Sync after %d s"
+            .syncIntervalValue: "Sync after %d s",
+            .showCompletedSection: "Show Completed Items",
+            .showCompletedSectionDescription: "Display completed todos in the menu bar"
         ]
 
         private static func tr(_ key: StringKey) -> String {
@@ -276,6 +282,9 @@ final class L10n: ObservableObject {
         }
         return String(format: tr(.syncIntervalValue), seconds)
     }
+
+    static var showCompletedSection: String { tr(.showCompletedSection) }
+    static var showCompletedSectionDescription: String { tr(.showCompletedSectionDescription) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

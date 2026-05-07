@@ -12,11 +12,17 @@ A macOS menu bar utility that automatically reads unchecked todo items from your
 
 ## Features
 
-- Pull all notes containing unchecked checkboxes (`- [ ]`) from Bear
-- Display todo items grouped by note in the menu bar
-- **Mark todos complete** — click a red circle to directly toggle `- [ ]` to `- [x]` in Bear
-- **Visual indicators** — unchecked shows a red hollow circle ◯, completed shows a filled circle (from Reminders sync)
-- Auto-refresh by monitoring Bear database changes (requires database access authorization)
+- Pull all notes containing checkboxes (`- [ ]` and `- [x]`) from Bear
+- Display pending and completed todos grouped by note in the menu bar
+- **Mark todos complete/incomplete** — click a red/green circle to toggle `- [ ]` / `- [x]` directly in Bear
+- **Bidirectional Reminders sync** — Bear todos automatically sync to a dedicated calendar in system Reminders, with conflict resolution based on last-modified timestamps
+- **System Reminders display** — show uncompleted system reminders grouped by Today / Tomorrow / Scheduled / Unscheduled
+- **Click to open** — open the corresponding Bear note or Reminders.app item
+- **Pause / Resume sync** — toggle to temporarily stop automatic refresh
+- **Configurable sync interval** — set debounce delay from immediate to 7 seconds
+- **Launch at login** — optionally start automatically on system login
+- **i18n support** — English and Simplified Chinese, auto-detected from system locale
+- Auto-refresh by monitoring Bear database changes in real time (requires database access authorization)
 
 ## Download & Installation
 
@@ -35,7 +41,7 @@ brew update && brew upgrade --cask bear-todo-menu-bar
 
 ### Option 2: Download from Release
 
-Go to [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) and download the latest `BearTodoMenuBar.zip`. Unzip it and drag the `.app` into `/Applications`.
+Go to [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) and download the latest `BearTodoMenuBar.dmg` or `BearTodoMenuBar.zip`. Open the DMG and drag the `.app` into `/Applications`, or unzip the zip and do the same.
 
 ### Option 3: Build from Source
 
@@ -59,26 +65,15 @@ swift build
 
 ## First-Time Setup
 
-After launching the app for the first time, click the menu bar icon → **Settings...** and complete the following two steps to get full functionality:
+After launching the app for the first time, click the menu bar icon → **Settings...** and authorize database access to enable auto-refresh:
 
-### 1. Configure API Token
+### Authorize Database Access
 
-1. Open the Bear app
-2. Click **Help → API Token** in the menu bar
-3. Copy the generated Token
-4. Paste it into the **Bear API Token** field in the app and click Save
-
-> **Note**: The Token is used by Bear for bearcli communication. Please keep it safe.
-
-### 2. Authorize Database Access
-
-To allow the app to automatically refresh the todo list after you edit Bear notes, you need to authorize access to Bear's database folder:
-
-1. Click **Authorize Access to Bear Database** in the Settings window
-2. In the file picker that appears, select Bear's **Application Data** folder (usually located at `~/Library/Group Containers/9K3BFM6K6M.net.shinyfrog.bear/Application Data`)
+1. Click **Authorize Access** in the Settings window
+2. In the file picker, select Bear's **Application Data** folder (usually `~/Library/Group Containers/9K3BFM6K6M.net.shinyfrog.bear/Application Data`)
 3. Click **Authorize Access**
 
-Once authorized, the app will monitor database changes in real time and automatically refresh the menu bar content.
+Optionally, enable **Reminders Sync** to automatically mirror todos in system Reminders. Once authorized, the app will monitor database changes in real time and automatically refresh the menu bar content.
 
 ## System Requirements
 
@@ -92,28 +87,40 @@ Once authorized, the app will monitor database changes in real time and automati
 
 ```
 .
-├── Package.swift           # Swift Package Manager config
-├── Sources/                # Source code
-│   └── BearTodoMenuBar/
-│       ├── BearTodoMenuBarApp.swift
-│       ├── MenuBarController.swift
-│       ├── Views/
-│       ├── Services/
-│       ├── Models/
-│       └── Utils/
-├── scripts/
-│   ├── build-app.sh        # Build .app bundle
-│   ├── run-local.sh        # Run locally (no install)
-│   └── run.sh              # Build and install to /Applications
-├── resources/              # Icons, etc.
+├── Package.swift
+├── Sources/BearTodoMenuBar/
+│   ├── BearTodoMenuBarApp.swift     # @main, AppDelegate, settings window
+│   ├── Info.plist
+│   ├── Models/TodoItem.swift        # Data models
+│   ├── Services/
+│   │   ├── BearService.swift        # bearcli wrapper
+│   │   ├── BearFileWatcher.swift    # Database change monitoring
+│   │   ├── ReminderService.swift    # EventKit bidirectional sync
+│   │   ├── TodoParser.swift         # Checkbox syntax parser
+│   │   └── L10n.swift               # i18n (Chinese/English)
+│   ├── Utils/
+│   │   ├── KeychainStorage.swift    # Persistent settings
+│   │   ├── BearBookmarkManager.swift # Security-scoped bookmark
+│   │   ├── MenuBarViewModel.swift   # ViewModel: refresh & sync orchestration
+│   │   └── Debounce.swift           # Debounce utility
+│   └── Views/
+│       ├── MenuBarContent.swift     # Menu bar layout
+│       ├── BearTodoMenuItemView.swift  # Bear todo row
+│       ├── ReminderMenuItemView.swift  # Reminder row
+│       ├── DesignComponents.swift   # Shared UI components
+│       └── SettingsView.swift       # Settings panel
+├── scripts/                         # Build, run, install scripts
+├── resources/                       # App icon
 └── README.md
 ```
 
 ## Technical Notes
 
 - Uses Bear's [bearcli](https://bear.app/) to fetch and edit note data
-- Uses `DispatchSourceFileSystemObject` to monitor `database.sqlite` file changes for auto-refresh
+- Uses EventKit to sync Bear todos bidirectionally with a dedicated calendar in system Reminders, with conflict resolution based on last-modified timestamps
+- Uses `DispatchSourceFileSystemObject` to monitor `database.sqlite` file changes for real-time auto-refresh
 - Uses Security-Scoped Bookmark to persist database directory access permissions
+- Uses SwiftUI spring animations and staggered entrance effects for menu bar UI
 
 ## Issue Reporting
 

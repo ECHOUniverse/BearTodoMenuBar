@@ -12,11 +12,17 @@
 
 ## 功能
 
-- 从 Bear 中拉取所有包含未勾选复选框（`- [ ]`）的笔记
-- 在菜单栏中按笔记分组展示待办事项
-- **一键标记完成** — 点击红色圆圈直接在 Bear 中将 `- [ ]` 变为 `- [x]`
-- **视觉指示器** — 未完成显示红色空心圆 ◯，已完成显示实心圆（来自提醒事项同步）
-- 通过监视 Bear 数据库变化实现自动刷新（需授权数据库访问）
+- 从 Bear 中拉取所有包含复选框（`- [ ]` 和 `- [x]`）的笔记
+- 在菜单栏中按笔记分组展示待办和已完成事项
+- **一键标记完成/未完成** — 点击红色/绿色圆圈直接在 Bear 中切换 `- [ ]` / `- [x]`
+- **双向提醒事项同步** — Bear 待办自动同步到系统提醒事项的专用日历，基于最后修改时间戳解决冲突
+- **系统提醒事项展示** — 按今天 / 明天 / 计划 / 未安排分组显示未完成的系统提醒事项
+- **点击打开** — 打开对应的 Bear 笔记或系统提醒事项
+- **暂停/恢复同步** — 一键开关，临时停止自动刷新
+- **可配置同步间隔** — 防抖延迟从即时到 7 秒
+- **开机启动** — 可选登录时自动启动
+- **多语言支持** — 英文和简体中文，随系统语言自动切换
+- 实时监控 Bear 数据库变化自动刷新（需授权数据库访问）
 
 ## 下载与安装
 
@@ -35,7 +41,7 @@ brew update && brew upgrade --cask bear-todo-menu-bar
 
 ### 方式二：从 Release 下载
 
-前往 [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) 下载最新版本的 `BearTodoMenuBar.zip`，解压后将 `.app` 拖入 `/Applications` 即可。
+前往 [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) 下载最新版本的 `BearTodoMenuBar.dmg` 或 `BearTodoMenuBar.zip`。打开 DMG 将 `.app` 拖入 `/Applications`，或解压 zip 后同样操作即可。
 
 ### 方式三：从源码构建
 
@@ -59,26 +65,15 @@ swift build
 
 ## 首次配置
 
-应用第一次启动后，点击菜单栏图标 →「设置...」，完成以下两步即可全功能运行：
+应用第一次启动后，点击菜单栏图标 →「设置...」，授权数据库访问即可启用自动刷新：
 
-### 1. 配置 API Token
+### 授权数据库访问
 
-1. 打开 Bear 应用
-2. 点击菜单栏 **Help → API Token**
-3. 复制生成的 Token
-4. 粘贴到本应用的「Bear API Token」输入框中，点击保存
-
-> **注意**：Token 是 Bear 用于 bearcli 通信的凭证，请妥善保管。
-
-### 2. 授权数据库访问
-
-为了让应用能在你编辑 Bear 笔记后自动刷新待办列表，需要授权访问 Bear 的数据库文件夹：
-
-1. 在设置窗口中点击「授权访问 Bear 数据库」
+1. 在设置窗口中点击「授权访问」
 2. 在弹出的文件选择器中，选中 Bear 的 Application Data 文件夹（路径通常为 `~/Library/Group Containers/9K3BFM6K6M.net.shinyfrog.bear/Application Data`）
 3. 点击「授权访问」
 
-授权成功后，应用会实时监控数据库变化并自动刷新菜单栏内容。
+可选启用「提醒事项同步」，将待办自动镜像到系统提醒事项。授权成功后，应用会实时监控数据库变化并自动刷新菜单栏内容。
 
 ## 系统要求
 
@@ -92,28 +87,40 @@ swift build
 
 ```
 .
-├── Package.swift           # Swift Package Manager 配置
-├── Sources/                # 源代码
-│   └── BearTodoMenuBar/
-│       ├── BearTodoMenuBarApp.swift
-│       ├── MenuBarController.swift
-│       ├── Views/
-│       ├── Services/
-│       ├── Models/
-│       └── Utils/
-├── scripts/
-│   ├── build-app.sh        # 构建 .app bundle
-│   ├── run-local.sh        # 本地运行（不安装）
-│   └── run.sh              # 构建并安装到 /Applications
-├── resources/              # 图标等资源
+├── Package.swift
+├── Sources/BearTodoMenuBar/
+│   ├── BearTodoMenuBarApp.swift     # @main，AppDelegate，设置窗口
+│   ├── Info.plist
+│   ├── Models/TodoItem.swift        # 数据模型
+│   ├── Services/
+│   │   ├── BearService.swift        # bearcli 封装
+│   │   ├── BearFileWatcher.swift    # 数据库变化监控
+│   │   ├── ReminderService.swift    # EventKit 双向同步
+│   │   ├── TodoParser.swift         # 复选框语法解析
+│   │   └── L10n.swift               # 国际化（中文/英文）
+│   ├── Utils/
+│   │   ├── KeychainStorage.swift    # 持久化配置存储
+│   │   ├── BearBookmarkManager.swift # Security-Scoped Bookmark
+│   │   ├── MenuBarViewModel.swift   # ViewModel：刷新与同步编排
+│   │   └── Debounce.swift           # 防抖工具
+│   └── Views/
+│       ├── MenuBarContent.swift     # 菜单栏布局
+│       ├── BearTodoMenuItemView.swift  # Bear 待办行
+│       ├── ReminderMenuItemView.swift  # 系统提醒行
+│       ├── DesignComponents.swift   # 共享 UI 组件
+│       └── SettingsView.swift       # 设置面板
+├── scripts/                         # 构建、运行、安装脚本
+├── resources/                       # 应用图标
 └── README.md
 ```
 
 ## 技术说明
 
 - 使用 Bear 的 [bearcli](https://bear.app/) 获取和编辑笔记数据
-- 使用 `DispatchSourceFileSystemObject` 监听 `database.sqlite` 文件变化实现自动刷新
+- 使用 EventKit 将 Bear 待办双向同步到系统提醒事项的专用日历，基于最后修改时间戳解决冲突
+- 使用 `DispatchSourceFileSystemObject` 监听 `database.sqlite` 文件变化实现实时自动刷新
 - 使用 Security-Scoped Bookmark 持久化数据库目录访问权限
+- 使用 SwiftUI spring 动画和交错入场效果美化菜单栏界面
 
 ## 问题反馈
 

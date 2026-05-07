@@ -31,6 +31,15 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: ./scripts/build-app.sh
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Make DMG script executable
+        run: chmod +x ./scripts/create-dmg.sh
+
+      - name: Create DMG
+        run: ./scripts/create-dmg.sh
+
       - name: Package .app into zip
         run: |
           cd .build/release
@@ -39,7 +48,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: .build/release/BearTodoMenuBar.zip
+          files: |
+            .build/release/BearTodoMenuBar.zip
+            .build/release/BearTodoMenuBar.dmg
           generate_release_notes: true
 
       - name: Trigger tap repo update

@@ -125,6 +125,8 @@ final class MenuBarViewModel: ObservableObject {
 
         isRefreshing = true
 
+        let cachedCompleted = self.completedNoteTodos
+
         BearService.shared.fetchAllUncheckedTodos { [weak self] result in
             guard let self else { return }
 
@@ -188,8 +190,13 @@ final class MenuBarViewModel: ObservableObject {
                         ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast)
                     }
 
-                    self.noteTodos = activeNotes
-                    self.completedNoteTodos = completedNotes
+                    if notes.isEmpty && !cachedCompleted.isEmpty {
+                        self.noteTodos = []
+                        self.completedNoteTodos = cachedCompleted
+                    } else {
+                        self.noteTodos = activeNotes
+                        self.completedNoteTodos = completedNotes
+                    }
 
                     ReminderService.shared.fetchUncompletedReminders { items in
                         self.systemReminders = items

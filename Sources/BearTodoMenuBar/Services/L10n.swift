@@ -99,6 +99,7 @@ final class L10n: ObservableObject {
         case syncIntervalValue
         case showCompletedSection
         case showCompletedSectionDescription
+        case allBearTodosCompleted
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -156,7 +157,8 @@ final class L10n: ObservableObject {
             .syncIntervalImmediate: "立即同步",
             .syncIntervalValue: "延迟 %d 秒后同步",
             .showCompletedSection: "显示已完成事项",
-            .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项"
+            .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项",
+            .allBearTodosCompleted: "已全部完成 ✓"
         ]
 
         private static let enStrings: [StringKey: String] = [
@@ -214,7 +216,8 @@ final class L10n: ObservableObject {
             .syncIntervalImmediate: "Immediate",
             .syncIntervalValue: "Sync after %d s",
             .showCompletedSection: "Show Completed Items",
-            .showCompletedSectionDescription: "Display completed todos in the menu bar"
+            .showCompletedSectionDescription: "Display completed todos in the menu bar",
+            .allBearTodosCompleted: "All completed ✓"
         ]
 
         private static func tr(_ key: StringKey) -> String {
@@ -285,6 +288,7 @@ final class L10n: ObservableObject {
 
     static var showCompletedSection: String { tr(.showCompletedSection) }
     static var showCompletedSectionDescription: String { tr(.showCompletedSectionDescription) }
+    static var allBearTodosCompleted: String { tr(.allBearTodosCompleted) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

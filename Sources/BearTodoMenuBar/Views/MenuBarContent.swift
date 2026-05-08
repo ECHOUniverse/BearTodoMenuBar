@@ -91,9 +91,10 @@ struct MenuBarContent: View {
     private func buildSectionRows() -> [AnyView] {
         var rows: [AnyView] = []
         let bearNotes = viewModel.noteTodos
+        let completedNotes = viewModel.completedNoteTodos
         let reminders = viewModel.systemReminders
 
-        if bearNotes.flatMap(\.todos).isEmpty && viewModel.completedNoteTodos.flatMap(\.todos).isEmpty && reminders.isEmpty {
+        if bearNotes.flatMap(\.todos).isEmpty && completedNotes.flatMap(\.todos).isEmpty && reminders.isEmpty {
             return rows
         }
 
@@ -129,8 +130,18 @@ struct MenuBarContent: View {
             ))
         }
 
+        if pendingItems.isEmpty && !completedNotes.isEmpty {
+            rows.append(AnyView(
+                MenuSectionCard {
+                    Text(L10n.allBearTodosCompleted)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, 6)
+                }
+            ))
+        }
+
         // Completed Bear todos card
-        let completedNotes = viewModel.completedNoteTodos
         if !completedNotes.isEmpty && KeychainStorage.shared.isCompletedSectionVisible {
             var completedRemaining = 5
             var completedItems: [AnyView] = []

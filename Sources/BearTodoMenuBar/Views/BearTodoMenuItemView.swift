@@ -15,7 +15,7 @@ struct BearTodoMenuItemView: View {
             } label: {
                 Image(systemName: isAnimating ? iconFilled : iconEmpty)
                     .font(.system(size: 12))
-                    .foregroundColor(isCompleted ? .green : .red)
+                    .foregroundColor(.red)
                     .frame(width: 16, height: 16)
             }
             .buttonStyle(SpringPressButtonStyle())

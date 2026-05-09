@@ -6,56 +6,60 @@ struct MenuBarContent: View {
     @State private var animateContent = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            headerView
+        let rows = buildSectionRows()
+
+        ScrollView(.vertical) {
+            VStack(spacing: 8) {
+                headerView
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .opacity(animateContent ? 1 : 0)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: animateContent)
+
+                if !BearBookmarkManager.shared.hasBookmark {
+                    MenuSectionCard {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.yellow)
+                                .font(.system(size: 14))
+                            Text(L10n.noDatabaseAuth)
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 6)
+                    }
+                }
+
+                if rows.isEmpty {
+                    MenuSectionCard {
+                        Text(L10n.noTodos)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                    }
+                } else {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                        row
+                            .staggeredEntrance(index, animate: animateContent)
+                    }
+                }
+
+                HStack {
+                    Button(L10n.settingsMenu) { openWindow(id: "settings") }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(",", modifiers: .command)
+                    Spacer()
+                    Button(L10n.quit) { NSApp.terminate(nil) }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut("q", modifiers: .command)
+                }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .opacity(animateContent ? 1 : 0)
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: animateContent)
-
-            if !BearBookmarkManager.shared.hasBookmark {
-                MenuSectionCard {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 14))
-                        Text(L10n.noDatabaseAuth)
-                            .font(.callout)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 6)
-                }
+                .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.3), value: animateContent)
             }
-
-            let rows = buildSectionRows()
-            if rows.isEmpty {
-                MenuSectionCard {
-                    Text(L10n.noTodos)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                }
-            } else {
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    row
-                        .staggeredEntrance(index, animate: animateContent)
-                }
-            }
-
-            HStack {
-                Button(L10n.settingsMenu) { openWindow(id: "settings") }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut(",", modifiers: .command)
-                Spacer()
-                Button(L10n.quit) { NSApp.terminate(nil) }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut("q", modifiers: .command)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .opacity(animateContent ? 1 : 0)
-            .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.3), value: animateContent)
+            .frame(width: 320)
         }
-        .frame(width: 320)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear {
             DispatchQueue.main.async {
                 animateContent = true
@@ -236,6 +240,7 @@ struct MenuBarContent: View {
 
         return rows
     }
+
 }
 
 private struct HeaderRefreshButton: View {

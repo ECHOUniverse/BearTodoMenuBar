@@ -49,6 +49,18 @@ final class MenuBarViewModel: ObservableObject {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(bearDidTerminate),
+            name: NSWorkspace.didTerminateApplicationNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(bearDidHide),
+            name: NSWorkspace.didHideApplicationNotification,
+            object: nil
+        )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(eventStoreDidChange),
@@ -93,6 +105,24 @@ final class MenuBarViewModel: ObservableObject {
             remindersDebounce.cancel()
             refresh()
         }
+    }
+
+    @objc private func bearDidTerminate(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              app.bundleIdentifier == "net.shinyfrog.bear" else { return }
+        bearIsFrontmost = false
+        remindersDebounce.cancel()
+        fileWatcher.cancelDebounce()
+        refresh()
+    }
+
+    @objc private func bearDidHide(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              app.bundleIdentifier == "net.shinyfrog.bear" else { return }
+        bearIsFrontmost = false
+        remindersDebounce.cancel()
+        fileWatcher.cancelDebounce()
+        refresh()
     }
 
     @objc private func eventStoreDidChange(_ notification: Notification) {

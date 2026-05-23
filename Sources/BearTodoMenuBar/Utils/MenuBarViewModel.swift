@@ -15,6 +15,7 @@ final class MenuBarViewModel: ObservableObject {
     private let remindersDebounce = Debounce(delay: TimeInterval(KeychainStorage.shared.syncInterval))
     private var bearIsFrontmost = false
     private var remindersIsFrontmost = false
+    private var lastRefreshCompletedAt: Date = .distantPast
 
     init() {
         setupFileWatcher()
@@ -153,6 +154,7 @@ final class MenuBarViewModel: ObservableObject {
     func refresh() {
         guard !isPaused else { return }
         guard !isRefreshing else { return }
+        guard Date().timeIntervalSince(lastRefreshCompletedAt) >= 2.0 else { return }
 
         isRefreshing = true
 
@@ -233,6 +235,7 @@ final class MenuBarViewModel: ObservableObject {
                         self.systemReminders = items
                         self.isRefreshing = false
                         self.lastRefreshDate = Date()
+                        self.lastRefreshCompletedAt = Date()
                     }
                 }
             case .failure(let error):
@@ -242,6 +245,7 @@ final class MenuBarViewModel: ObservableObject {
                 self.systemReminders = []
                 self.isRefreshing = false
                 self.lastRefreshDate = Date()
+                self.lastRefreshCompletedAt = Date()
             }
         }
     }

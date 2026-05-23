@@ -26,7 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let accessGranted = BearBookmarkManager.shared.startAccessing()
         if !accessGranted {
-            print("Warning: Bear database security-scoped resource access not granted")
+            scheduleBookmarkRetry(attempt: 1)
         }
 
         // Sync persisted OS-level states on launch (handles reinstall scenarios
@@ -50,5 +50,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         BearBookmarkManager.shared.stopAccessing()
+    }
+
+    private func scheduleBookmarkRetry(attempt: Int) {
+        let maxRetries = 3
+        guard attempt <= maxRetries else {
+            print("Warning: Bear database security-scoped resource access not granted after \(maxRetries) attempts")
+            return
+        }
+        let delay = DispatchTimeInterval.seconds(attempt)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            let granted = BearBookmarkManager.shared.startAccessing()
+            if !granted {
+                self.scheduleBookmarkRetry(attempt: attempt + 1)
+            }
+        }
     }
 }

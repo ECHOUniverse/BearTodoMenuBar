@@ -44,13 +44,17 @@ struct MenuBarContent: View {
                 }
 
                 HStack {
-                    Button(L10n.settingsMenu) { openWindow(id: "settings") }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut(",", modifiers: .command)
+                    Button { openWindow(id: "settings") } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(",", modifiers: .command)
                     Spacer()
-                    Button(L10n.quit) { NSApp.terminate(nil) }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut("q", modifiers: .command)
+                    Button { NSApp.terminate(nil) } label: {
+                        Image(systemName: "xmark.app.fill")
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut("q", modifiers: .command)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

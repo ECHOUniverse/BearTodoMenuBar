@@ -246,13 +246,24 @@ struct MenuBarContent: View {
 private struct HeaderRefreshButton: View {
     let lastRefresh: Date
     let action: () -> Void
+    @State private var timeString: String
 
-    var body: some View {
+    init(lastRefresh: Date, action: @escaping () -> Void) {
+        self.lastRefresh = lastRefresh
+        self.action = action
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
-        let timeString = formatter.localizedString(for: lastRefresh, relativeTo: Date())
-        return Button(L10n.lastUpdate(timeString), action: action)
+        _timeString = State(initialValue: formatter.localizedString(for: lastRefresh, relativeTo: Date()))
+    }
+
+    var body: some View {
+        Button(L10n.lastUpdate(timeString), action: action)
             .buttonStyle(.plain)
             .font(.callout)
+            .onChange(of: lastRefresh) { _ in
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = .short
+                timeString = formatter.localizedString(for: lastRefresh, relativeTo: Date())
+            }
     }
 }

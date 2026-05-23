@@ -127,6 +127,7 @@ final class MenuBarViewModel: ObservableObject {
 
     @objc private func eventStoreDidChange(_ notification: Notification) {
         guard KeychainStorage.shared.isReminderSyncEnabled else { return }
+        guard !isRefreshing else { return }
         remindersDebounce.debounce { [weak self] in
             guard let self else { return }
             self.refresh()

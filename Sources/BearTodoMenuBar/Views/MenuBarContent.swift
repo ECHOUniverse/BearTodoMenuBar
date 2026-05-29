@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MenuBarContent: View {
     @ObservedObject var viewModel: MenuBarViewModel
-    @Environment(\.openWindow) private var openWindow
     @State private var animateContent = false
 
     var body: some View {
@@ -43,17 +42,23 @@ struct MenuBarContent: View {
                     }
                 }
 
-                HStack {
-                    Button { openWindow(id: "settings") } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .buttonStyle(.plain)
+                HStack(spacing: 8) {
+                    LiquidGlassCircleButton(
+                        systemImage: "gearshape",
+                        accessibilityLabel: LocalizedStringKey(L10n.settingsMenu),
+                        action: {
+                            NSApp.sendAction(Selector(("openSettings:")), to: NSApp.delegate, from: nil)
+                        }
+                    )
                     .keyboardShortcut(",", modifiers: .command)
                     Spacer()
-                    Button { NSApp.terminate(nil) } label: {
-                        Image(systemName: "xmark.app.fill")
-                    }
-                    .buttonStyle(.plain)
+                    LiquidGlassCircleButton(
+                        systemImage: "xmark",
+                        accessibilityLabel: LocalizedStringKey(L10n.quit),
+                        action: {
+                            NSApp.terminate(nil)
+                        }
+                    )
                     .keyboardShortcut("q", modifiers: .command)
                 }
                 .padding(.horizontal, 16)
@@ -110,96 +115,107 @@ struct MenuBarContent: View {
         var pendingRemaining = 15
         var pendingItems: [AnyView] = []
         for note in bearNotes where pendingRemaining > 0 {
-            pendingItems.append(AnyView(
-                Text(note.title)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.top, 2)
-                    .padding(.bottom, 4)
-            ))
+            pendingItems.append(
+                AnyView(
+                    Text(note.title)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.top, 2)
+                        .padding(.bottom, 4)
+                ))
             for todo in note.todos.prefix(pendingRemaining) {
-                pendingItems.append(AnyView(BearTodoMenuItemView(
-                    text: todo.text,
-                    isCompleted: false,
-                    onToggle: { [weak vm = viewModel] in vm?.completeTodo(todo) },
-                    onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
-                ).id("\(todo.noteId)|\(todo.lineNumber)")))
+                pendingItems.append(
+                    AnyView(
+                        BearTodoMenuItemView(
+                            text: todo.text,
+                            isCompleted: false,
+                            onToggle: { [weak vm = viewModel] in vm?.completeTodo(todo) },
+                            onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
+                        ).id("\(todo.noteId)|\(todo.lineNumber)")))
                 pendingRemaining -= 1
             }
         }
         if !pendingItems.isEmpty {
-            rows.append(AnyView(
-                MenuSectionCard {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(pendingItems.indices, id: \.self) { pendingItems[$0] }
+            rows.append(
+                AnyView(
+                    MenuSectionCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(pendingItems.indices, id: \.self) { pendingItems[$0] }
+                        }
                     }
-                }
-            ))
+                ))
         }
 
         if pendingItems.isEmpty && !completedNotes.isEmpty {
-            rows.append(AnyView(
-                MenuSectionCard {
-                    Text(L10n.allBearTodosCompleted)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.horizontal, 6)
-                }
-            ))
+            rows.append(
+                AnyView(
+                    MenuSectionCard {
+                        Text(L10n.allBearTodosCompleted)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.horizontal, 6)
+                    }
+                ))
         }
 
         // Completed Bear todos card
         if !completedNotes.isEmpty && KeychainStorage.shared.isCompletedSectionVisible {
             var completedRemaining = 5
             var completedItems: [AnyView] = []
-            completedItems.append(AnyView(
-                Text(L10n.completedSection)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.top, 2)
-                    .padding(.bottom, 4)
-            ))
-            for note in completedNotes where completedRemaining > 0 {
-                completedItems.append(AnyView(
-                    Text(note.title)
-                        .font(.system(size: 11))
+            completedItems.append(
+                AnyView(
+                    Text(L10n.completedSection)
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.top, 2)
+                        .padding(.bottom, 4)
                 ))
+            for note in completedNotes where completedRemaining > 0 {
+                completedItems.append(
+                    AnyView(
+                        Text(note.title)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                    ))
                 for todo in note.todos.prefix(completedRemaining) {
-                    completedItems.append(AnyView(BearTodoMenuItemView(
-                        text: todo.text,
-                        isCompleted: true,
-                        onToggle: { [weak vm = viewModel] in vm?.uncompleteTodo(todo) },
-                        onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
-                    ).id("\(todo.noteId)|\(todo.lineNumber)")))
+                    completedItems.append(
+                        AnyView(
+                            BearTodoMenuItemView(
+                                text: todo.text,
+                                isCompleted: true,
+                                onToggle: { [weak vm = viewModel] in vm?.uncompleteTodo(todo) },
+                                onOpenNote: { [weak vm = viewModel] in vm?.openNote(todo) }
+                            ).id("\(todo.noteId)|\(todo.lineNumber)")))
                     completedRemaining -= 1
                 }
             }
-            rows.append(AnyView(
-                MenuSectionCard {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(completedItems.indices, id: \.self) { completedItems[$0] }
+            rows.append(
+                AnyView(
+                    MenuSectionCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(completedItems.indices, id: \.self) { completedItems[$0] }
+                        }
                     }
-                }
-            ))
+                ))
         }
 
         // Reminders card
         if ReminderService.shared.isAuthorized && !reminders.isEmpty {
             var remRemaining = 20
             var reminderItems: [AnyView] = []
-            reminderItems.append(AnyView(
-                Text(L10n.remindersSection)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.top, 2)
-                    .padding(.bottom, 4)
-            ))
+            reminderItems.append(
+                AnyView(
+                    Text(L10n.remindersSection)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.top, 2)
+                        .padding(.bottom, 4)
+                ))
             for category in ReminderDueCategory.allCases where remRemaining > 0 {
                 let filtered = reminders.filter { $0.dueCategory == category }
                 guard !filtered.isEmpty else { continue }
@@ -211,35 +227,40 @@ struct MenuBarContent: View {
                     case .unscheduled: return L10n.unscheduledSection
                     }
                 }()
-                reminderItems.append(AnyView(
-                    Text(catTitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                ))
+                reminderItems.append(
+                    AnyView(
+                        Text(catTitle)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                    ))
                 for reminder in filtered.prefix(remRemaining) {
-                    reminderItems.append(AnyView(ReminderMenuItemView(
-                        title: reminder.title,
-                        reminderIdentifier: reminder.reminderIdentifier,
-                        onToggleComplete: { id, completion in
-                            ReminderService.shared.toggleReminderCompletion(identifier: id, completion: completion)
-                        },
-                        onOpenReminder: { [weak vm = viewModel] in
-                            vm?.openReminder(reminder.reminderIdentifier)
-                        },
-                        onRequestRefresh: { [weak vm = viewModel] in vm?.refresh() }
-                    ).id(reminder.reminderIdentifier)))
+                    reminderItems.append(
+                        AnyView(
+                            ReminderMenuItemView(
+                                title: reminder.title,
+                                reminderIdentifier: reminder.reminderIdentifier,
+                                onToggleComplete: { id, completion in
+                                    ReminderService.shared.toggleReminderCompletion(
+                                        identifier: id, completion: completion)
+                                },
+                                onOpenReminder: { [weak vm = viewModel] in
+                                    vm?.openReminder(reminder.reminderIdentifier)
+                                },
+                                onRequestRefresh: { [weak vm = viewModel] in vm?.refresh() }
+                            ).id(reminder.reminderIdentifier)))
                     remRemaining -= 1
                 }
             }
-            rows.append(AnyView(
-                MenuSectionCard {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(reminderItems.indices, id: \.self) { reminderItems[$0] }
+            rows.append(
+                AnyView(
+                    MenuSectionCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(reminderItems.indices, id: \.self) { reminderItems[$0] }
+                        }
                     }
-                }
-            ))
+                ))
         }
 
         return rows

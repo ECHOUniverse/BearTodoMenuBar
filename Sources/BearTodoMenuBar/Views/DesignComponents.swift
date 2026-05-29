@@ -87,6 +87,34 @@ extension View {
     }
 }
 
+// MARK: - Liquid Glass Circle Button
+
+struct LiquidGlassCircleButton: View {
+    let systemImage: String
+    let accessibilityLabel: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 30, height: 30)
+        }
+        .buttonStyle(.plain)
+        .background(
+            Circle()
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+        )
+        .overlay(
+            Circle()
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+        )
+        .accessibilityLabel(accessibilityLabel)
+        .help(accessibilityLabel)
+    }
+}
+
 // MARK: - Spring Press Button Style
 
 struct SpringPressButtonStyle: ButtonStyle {

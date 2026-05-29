@@ -1,5 +1,5 @@
-import SwiftUI
 import ServiceManagement
+import SwiftUI
 
 @main
 struct BearTodoMenuBarApp: App {
@@ -11,16 +11,12 @@ struct BearTodoMenuBarApp: App {
             MenuBarContent(viewModel: viewModel)
         }
         .menuBarExtraStyle(.window)
-
-        Window(L10n.settings, id: "settings") {
-            SettingsView()
-                .frame(width: 420)
-        }
-        .windowResizability(.contentSize)
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var settingsWindow: NSWindow?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
@@ -29,16 +25,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             scheduleBookmarkRetry(attempt: 1)
         }
 
-        // Sync persisted OS-level states on launch (handles reinstall scenarios
-        // where UserDefaults may be cleared but the OS still has the record).
-
-        // Launch at login: if SMAppService reports enabled, restore the local flag.
         if SMAppService.mainApp.status == .enabled {
             KeychainStorage.shared.isLaunchAtLoginEnabled = true
         }
 
-        // Reminder sync persistence: if the flag survived reinstall via Keychain,
-        // silently re-request OS permission once so sync continues to work.
         if KeychainStorage.shared.isReminderSyncEnabled {
             if !ReminderService.shared.isAuthorized {
                 Task {
@@ -50,6 +40,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         BearBookmarkManager.shared.stopAccessing()
+    }
+
+    @objc func openSettings(_ sender: Any?) {
+        if let window = settingsWindow {
+            window.makeKeyAndOrderFront(sender)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hostingView = NSHostingView(
+            rootView: SettingsView()
+                .frame(width: 420)
+        )
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 620),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.settings
+        window.contentView = hostingView
+        window.level = .floating
+        window.center()
+        window.delegate = self
+        window.makeKeyAndOrderFront(sender)
+
+        settingsWindow = window
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func scheduleBookmarkRetry(attempt: Int) {
@@ -66,5 +85,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.scheduleBookmarkRetry(attempt: attempt + 1)
             }
         }
+    }
+}
+
+extension AppDelegate: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
     }
 }

@@ -30,10 +30,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if KeychainStorage.shared.isReminderSyncEnabled {
-            if !ReminderService.shared.isAuthorized {
+            let status = ReminderService.shared.authorizationStatus
+            if status == .notDetermined {
                 Task {
                     _ = await ReminderService.shared.requestAccess()
                 }
+            } else if ReminderService.shared.isAuthorizedStatus(status) {
+                // Already authorized, nothing to do
+            } else {
+                print("Reminders access denied or restricted (status: \(status.rawValue)), skipping request")
             }
         }
     }
@@ -77,7 +82,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Warning: Bear database security-scoped resource access not granted after \(maxRetries) attempts")
             return
         }
-        let delay = DispatchTimeInterval.seconds(attempt)
+        let delays = [2, 5, 10]
+        let delay = DispatchTimeInterval.seconds(delays[attempt - 1])
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             let granted = BearBookmarkManager.shared.startAccessing()

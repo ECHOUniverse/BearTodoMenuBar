@@ -122,7 +122,7 @@ class BearBookmarkManager {
             kSecAttrService as String: "com.beartodo",
             kSecAttrAccount as String: keychainBookmarkKey,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -138,7 +138,8 @@ class BearBookmarkManager {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "com.beartodo",
             kSecAttrAccount as String: keychainBookmarkKey,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
@@ -150,7 +151,7 @@ class BearBookmarkManager {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "com.beartodo",
-            kSecAttrAccount as String: keychainBookmarkKey
+            kSecAttrAccount as String: keychainBookmarkKey,
         ]
         SecItemDelete(query as CFDictionary)
     }

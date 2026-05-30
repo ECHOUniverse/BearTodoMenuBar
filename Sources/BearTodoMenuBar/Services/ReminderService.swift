@@ -1,6 +1,6 @@
+import AppKit
 import EventKit
 import Foundation
-import AppKit
 
 @MainActor
 final class ReminderService {
@@ -12,7 +12,11 @@ final class ReminderService {
     private var calendarIdentifier: String?
 
     var isAuthorized: Bool {
-        isAuthorizedStatus(EKEventStore.authorizationStatus(for: .reminder))
+        isAuthorizedStatus(authorizationStatus)
+    }
+
+    var authorizationStatus: EKAuthorizationStatus {
+        EKEventStore.authorizationStatus(for: .reminder)
     }
 
     func requestAccess() async -> Bool {
@@ -179,7 +183,6 @@ final class ReminderService {
     func fetchUncompletedReminders(completion: @escaping ([SystemReminderItem]) -> Void) {
         let freshStore = EKEventStore()
 
-
         let status = EKEventStore.authorizationStatus(for: .reminder)
         guard isAuthorizedStatus(status) else {
             completion([])
@@ -201,9 +204,9 @@ final class ReminderService {
                 return
             }
 
-
             let todayComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-            let tomorrowDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
+            let tomorrowDate = Calendar.current.date(
+                byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
             let tomorrowComponents = Calendar.current.dateComponents([.year, .month, .day], from: tomorrowDate)
 
             var todayItems: [SystemReminderItem] = []
@@ -222,8 +225,10 @@ final class ReminderService {
                 guard !title.isEmpty else { continue }
 
                 let identifier = reminder.calendarItemIdentifier
-                let category = self.categorizeDueDate(from: reminder.dueDateComponents, today: todayComponents, tomorrow: tomorrowComponents)
-                let item = SystemReminderItem(id: identifier, title: title, dueCategory: category, reminderIdentifier: identifier)
+                let category = self.categorizeDueDate(
+                    from: reminder.dueDateComponents, today: todayComponents, tomorrow: tomorrowComponents)
+                let item = SystemReminderItem(
+                    id: identifier, title: title, dueCategory: category, reminderIdentifier: identifier)
 
                 switch category {
                 case .today: todayItems.append(item)
@@ -237,7 +242,9 @@ final class ReminderService {
                 items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
             }
 
-            let allItems = sortBlock(todayItems) + sortBlock(tomorrowItems) + sortBlock(scheduledItems) + sortBlock(unscheduledItems)
+            let allItems =
+                sortBlock(todayItems) + sortBlock(tomorrowItems) + sortBlock(scheduledItems)
+                + sortBlock(unscheduledItems)
 
             Task { @MainActor in
                 completion(allItems)
@@ -263,19 +270,20 @@ final class ReminderService {
 
     func openReminderInApp(identifier: String) {
         guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder,
-              let title = reminder.title else { return }
+            let title = reminder.title
+        else { return }
 
         let escapedTitle = title.replacingOccurrences(of: "\"", with: "\\\"")
         let script = """
-        tell application "Reminders"
-            repeat with lst in lists
-                repeat with rmnd in (reminders of lst whose name is "\(escapedTitle)")
-                    return id of rmnd
+            tell application "Reminders"
+                repeat with lst in lists
+                    repeat with rmnd in (reminders of lst whose name is "\(escapedTitle)")
+                        return id of rmnd
+                    end repeat
                 end repeat
-            end repeat
-            return ""
-        end tell
-        """
+                return ""
+            end tell
+            """
 
         let appleScript = NSAppleScript(source: script)
         var error: NSDictionary?
@@ -311,11 +319,14 @@ final class ReminderService {
         }
     }
 
-    private func categorizeDueDate(from components: DateComponents?, today: DateComponents, tomorrow: DateComponents) -> ReminderDueCategory {
+    private func categorizeDueDate(from components: DateComponents?, today: DateComponents, tomorrow: DateComponents)
+        -> ReminderDueCategory
+    {
         guard let components = components,
-              let year = components.year,
-              let month = components.month,
-              let day = components.day else {
+            let year = components.year,
+            let month = components.month,
+            let day = components.day
+        else {
             return .unscheduled
         }
 
@@ -338,12 +349,15 @@ final class ReminderService {
 
     private func fetchOrCreateCalendar() -> EKCalendar? {
         if let identifier = calendarIdentifier,
-           let calendar = eventStore.calendar(withIdentifier: identifier),
-           calendar.allowsContentModifications {
+            let calendar = eventStore.calendar(withIdentifier: identifier),
+            calendar.allowsContentModifications
+        {
             return calendar
         }
 
-        let existing = eventStore.calendars(for: .reminder).first { $0.title == calendarTitle && $0.allowsContentModifications }
+        let existing = eventStore.calendars(for: .reminder).first {
+            $0.title == calendarTitle && $0.allowsContentModifications
+        }
         if let existing = existing {
             calendarIdentifier = existing.calendarIdentifier
             return existing

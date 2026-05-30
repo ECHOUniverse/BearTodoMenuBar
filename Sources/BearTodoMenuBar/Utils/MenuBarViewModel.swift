@@ -110,7 +110,8 @@ final class MenuBarViewModel: ObservableObject {
 
     @objc private func bearDidTerminate(_ notification: Notification) {
         guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              app.bundleIdentifier == "net.shinyfrog.bear" else { return }
+            app.bundleIdentifier == "net.shinyfrog.bear"
+        else { return }
         bearIsFrontmost = false
         remindersDebounce.cancel()
         fileWatcher.cancelDebounce()
@@ -119,7 +120,8 @@ final class MenuBarViewModel: ObservableObject {
 
     @objc private func bearDidHide(_ notification: Notification) {
         guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              app.bundleIdentifier == "net.shinyfrog.bear" else { return }
+            app.bundleIdentifier == "net.shinyfrog.bear"
+        else { return }
         bearIsFrontmost = false
         remindersDebounce.cancel()
         fileWatcher.cancelDebounce()
@@ -205,17 +207,19 @@ final class MenuBarViewModel: ObservableObject {
                             return todo.isCompleted
                         }
                         if !active.isEmpty {
-                            activeNotes.append(NoteTodos(
-                                id: note.id, title: note.title,
-                                todos: active, modified: note.modified
-                            ))
+                            activeNotes.append(
+                                NoteTodos(
+                                    id: note.id, title: note.title,
+                                    todos: active, modified: note.modified
+                                ))
                         }
                         if !completed.isEmpty {
-                            completedNotes.append(NoteTodos(
-                                id: note.id, title: note.title,
-                                todos: completed.sorted { $0.lineNumber > $1.lineNumber },
-                                modified: note.modified
-                            ))
+                            completedNotes.append(
+                                NoteTodos(
+                                    id: note.id, title: note.title,
+                                    todos: completed.sorted { $0.lineNumber > $1.lineNumber },
+                                    modified: note.modified
+                                ))
                         }
                     }
 
@@ -266,6 +270,18 @@ final class MenuBarViewModel: ObservableObject {
 
     func openNote(_ todo: TodoItem) {
         BearService.shared.openNote(id: todo.noteId)
+    }
+
+    func openNoteById(_ noteId: String) {
+        BearService.shared.openNote(id: noteId)
+    }
+
+    func openRemindersApp() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.reminders") else {
+            return
+        }
+        NSWorkspace.shared.openApplication(
+            at: url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
     }
 
     func uncompleteTodo(_ todo: TodoItem) {

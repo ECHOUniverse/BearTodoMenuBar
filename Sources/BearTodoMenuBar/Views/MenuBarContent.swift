@@ -117,12 +117,17 @@ struct MenuBarContent: View {
         for note in bearNotes where pendingRemaining > 0 {
             pendingItems.append(
                 AnyView(
-                    Text(note.title)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.top, 2)
-                        .padding(.bottom, 4)
+                    Button {
+                        viewModel.openNoteById(note.id)
+                    } label: {
+                        Text(note.title)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
                 ))
             for todo in note.todos.prefix(pendingRemaining) {
                 pendingItems.append(
@@ -175,11 +180,16 @@ struct MenuBarContent: View {
             for note in completedNotes where completedRemaining > 0 {
                 completedItems.append(
                     AnyView(
-                        Text(note.title)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                        Button {
+                            viewModel.openNoteById(note.id)
+                        } label: {
+                            Text(note.title)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                     ))
                 for todo in note.todos.prefix(completedRemaining) {
                     completedItems.append(
@@ -209,12 +219,17 @@ struct MenuBarContent: View {
             var reminderItems: [AnyView] = []
             reminderItems.append(
                 AnyView(
-                    Text(L10n.remindersSection)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.top, 2)
-                        .padding(.bottom, 4)
+                    Button {
+                        viewModel.openRemindersApp()
+                    } label: {
+                        Text(L10n.remindersSection)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
                 ))
             for category in ReminderDueCategory.allCases where remRemaining > 0 {
                 let filtered = reminders.filter { $0.dueCategory == category }

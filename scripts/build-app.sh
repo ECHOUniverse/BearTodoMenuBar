@@ -27,20 +27,20 @@ if ! security find-certificate -c "$CERT_NAME" "$KEYCHAIN" 2>/dev/null | grep -q
   echo "  🔧 Creating code signing certificate '$CERT_NAME'..."
   TMP="$(mktemp -d)"
   openssl genrsa -out "$TMP/key.pem" 2048 2>&1
-  cat > "$TMP/cert.cfg" << 'CEOF'
+  cat > "$TMP/cert.cfg" << EOF
 [ req ]
 default_bits        = 2048
 distinguished_name  = req_distinguished_name
 x509_extensions     = v3_req
 prompt              = no
 [ req_distinguished_name ]
+commonName          = ${CERT_NAME}
 [ v3_req ]
 basicConstraints    = critical, CA:FALSE
 keyUsage            = digitalSignature
 extendedKeyUsage    = codeSigning
 subjectKeyIdentifier = hash
-CEOF
-  echo "commonName = ${CERT_NAME}" >> "$TMP/cert.cfg"
+EOF
   openssl req -x509 -new -key "$TMP/key.pem" -out "$TMP/cert.pem" -days 3650 -config "$TMP/cert.cfg" -extensions v3_req 2>&1
   openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" -out "$TMP/cert.p12" -passout pass:temp 2>&1
   security import "$TMP/cert.p12" -k "$KEYCHAIN" -P temp -A 2>&1

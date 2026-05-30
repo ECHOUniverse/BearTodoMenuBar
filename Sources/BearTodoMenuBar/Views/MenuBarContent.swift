@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarContent: View {
     @ObservedObject var viewModel: MenuBarViewModel
+    @ObservedObject var l10n = L10n.shared
     @State private var animateContent = false
 
     var body: some View {

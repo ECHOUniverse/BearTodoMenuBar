@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 extension Notification.Name {
@@ -32,15 +33,16 @@ final class L10n: ObservableObject {
         }
     }
 
-    private var cancellable: Any?
+    private var cancellable: AnyCancellable?
 
     init() {
-        cancellable = UserDefaults.standard.observe(\.app_language_raw, options: [.new]) { [weak self] _, _ in
-            self?.objectWillChange.send()
-            DispatchQueue.main.async {
+        cancellable = NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
                 NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
             }
-        }
     }
 
     private enum StringKey {
@@ -103,132 +105,133 @@ final class L10n: ObservableObject {
     }
 
     private static let zhStrings: [StringKey: String] = [
-            .settings: "设置",
-            .settingsDescription: "配置 Bear 待办同步选项",
-            .systemReminders: "系统提醒事项",
-            .enableSync: "启用同步",
-            .databaseAccess: "数据库访问授权",
-            .authorized: "已授权",
-            .notAuthorized: "未授权",
-            .accessGranted: "已授权访问 Bear 数据库，自动刷新可用。",
-            .accessNotGranted: "未授权访问 Bear 数据库，自动刷新功能不可用。",
-            .reauthorize: "重新授权",
-            .authorizeAccess: "授权访问",
-            .reminderAccessDenied: "无法访问提醒事项，请检查系统权限设置",
-            .authorizePrompt: "授权访问",
-            .authorizeMessage: "请选择 Bear 的 Application Data 目录",
-            .cannotOpenPanel: "无法打开文件选择器",
-            .saveAuthFailed: "保存授权失败",
-            .language: "语言 / Language",
-            .languageAuto: "自动（跟随系统）",
-            .languageChinese: "简体中文",
-            .languageEnglish: "English",
-            .reminderAccessAllowed: "已允许",
-            .reminderAccessDeniedText: "已拒绝",
-            .reminderAccessRestricted: "受限制",
-            .reminderAccessPending: "待授权",
-            .reminderAccessUnknown: "未知",
-            .reminderAccessGrantedDesc: "提醒事项权限已获取，待办将自动同步到系统提醒事项。",
-            .reminderAccessDeniedDesc: "权限已被拒绝，请前往系统设置 → 隐私与安全性 → 提醒事项中开启。",
-            .reminderAccessRestrictedDesc: "权限受限制，无法访问提醒事项。",
-            .reminderAccessPendingDesc: "开启开关后将请求提醒事项权限。",
-            .refreshing: "⏳ 刷新中...",
-            .lastUpdate: "上次更新：%@",
-            .refreshNow: "立即刷新",
-            .noDatabaseAuth: "⚠️ 未授权数据库访问，自动刷新不可用",
-            .noTodos: "暂无待办事项",
-            .moreItems: "更多...（还有 %d 条）",
-            .openInBear: "在 Bear 中打开",
-            .settingsMenu: "设置...",
-            .quit: "退出",
-            .remindersSection: "系统提醒事项",
-            .todaySection: "今天",
-            .tomorrowSection: "明天",
-            .scheduledSection: "已安排",
-            .unscheduledSection: "未安排",
-            .pauseSync: "暂停同步",
-            .resumeSync: "开始同步",
-            .completedSection: "已完成",
-            .launchAtLogin: "开机启动",
-            .launchAtLoginToggle: "开机时自动启动",
-            .launchAtLoginDescription: "开启后应用将在登录时自动启动",
-            .syncInterval: "同步间隔",
-            .syncIntervalTitle: "同步间隔",
-            .syncIntervalImmediate: "立即同步",
-            .syncIntervalValue: "延迟 %d 秒后同步",
-            .showCompletedSection: "显示已完成事项",
-            .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项",
-            .allBearTodosCompleted: "已全部完成 ✓"
-        ]
+        .settings: "设置",
+        .settingsDescription: "配置 Bear 待办同步选项",
+        .systemReminders: "系统提醒事项",
+        .enableSync: "启用同步",
+        .databaseAccess: "数据库访问授权",
+        .authorized: "已授权",
+        .notAuthorized: "未授权",
+        .accessGranted: "已授权访问 Bear 数据库，自动刷新可用。",
+        .accessNotGranted: "未授权访问 Bear 数据库，自动刷新功能不可用。",
+        .reauthorize: "重新授权",
+        .authorizeAccess: "授权访问",
+        .reminderAccessDenied: "无法访问提醒事项，请检查系统权限设置",
+        .authorizePrompt: "授权访问",
+        .authorizeMessage: "请选择 Bear 的 Application Data 目录",
+        .cannotOpenPanel: "无法打开文件选择器",
+        .saveAuthFailed: "保存授权失败",
+        .language: "语言 / Language",
+        .languageAuto: "自动（跟随系统）",
+        .languageChinese: "简体中文",
+        .languageEnglish: "English",
+        .reminderAccessAllowed: "已允许",
+        .reminderAccessDeniedText: "已拒绝",
+        .reminderAccessRestricted: "受限制",
+        .reminderAccessPending: "待授权",
+        .reminderAccessUnknown: "未知",
+        .reminderAccessGrantedDesc: "提醒事项权限已获取，待办将自动同步到系统提醒事项。",
+        .reminderAccessDeniedDesc: "权限已被拒绝，请前往系统设置 → 隐私与安全性 → 提醒事项中开启。",
+        .reminderAccessRestrictedDesc: "权限受限制，无法访问提醒事项。",
+        .reminderAccessPendingDesc: "开启开关后将请求提醒事项权限。",
+        .refreshing: "⏳ 刷新中...",
+        .lastUpdate: "上次更新：%@",
+        .refreshNow: "立即刷新",
+        .noDatabaseAuth: "⚠️ 未授权数据库访问，自动刷新不可用",
+        .noTodos: "暂无待办事项",
+        .moreItems: "更多...（还有 %d 条）",
+        .openInBear: "在 Bear 中打开",
+        .settingsMenu: "设置...",
+        .quit: "退出",
+        .remindersSection: "系统提醒事项",
+        .todaySection: "今天",
+        .tomorrowSection: "明天",
+        .scheduledSection: "已安排",
+        .unscheduledSection: "未安排",
+        .pauseSync: "暂停同步",
+        .resumeSync: "开始同步",
+        .completedSection: "已完成",
+        .launchAtLogin: "开机启动",
+        .launchAtLoginToggle: "开机时自动启动",
+        .launchAtLoginDescription: "开启后应用将在登录时自动启动",
+        .syncInterval: "同步间隔",
+        .syncIntervalTitle: "同步间隔",
+        .syncIntervalImmediate: "立即同步",
+        .syncIntervalValue: "延迟 %d 秒后同步",
+        .showCompletedSection: "显示已完成事项",
+        .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项",
+        .allBearTodosCompleted: "已全部完成 ✓",
+    ]
 
-        private static let enStrings: [StringKey: String] = [
-            .settings: "Settings",
-            .settingsDescription: "Configure Bear Todo sync options",
-            .systemReminders: "System Reminders",
-            .enableSync: "Enable Sync",
-            .databaseAccess: "Database Access Authorization",
-            .authorized: "Authorized",
-            .notAuthorized: "Not Authorized",
-            .accessGranted: "Database access authorized, auto-refresh available.",
-            .accessNotGranted: "Database access not authorized, auto-refresh unavailable.",
-            .reauthorize: "Re-authorize",
-            .authorizeAccess: "Authorize Access",
-            .reminderAccessDenied: "Cannot access Reminders, please check system permission settings",
-            .authorizePrompt: "Authorize Access",
-            .authorizeMessage: "Please select Bear's Application Data directory",
-            .cannotOpenPanel: "Cannot open file chooser",
-            .saveAuthFailed: "Failed to save authorization",
-            .language: "Language",
-            .languageAuto: "Auto (Follow System)",
-            .languageChinese: "简体中文",
-            .languageEnglish: "English",
-            .reminderAccessAllowed: "Allowed",
-            .reminderAccessDeniedText: "Denied",
-            .reminderAccessRestricted: "Restricted",
-            .reminderAccessPending: "Pending",
-            .reminderAccessUnknown: "Unknown",
-            .reminderAccessGrantedDesc: "Reminder access granted, todos will sync to Reminders.",
-            .reminderAccessDeniedDesc: "Permission denied. Go to System Settings → Privacy & Security → Reminders to enable.",
-            .reminderAccessRestrictedDesc: "Access restricted, cannot access Reminders.",
-            .reminderAccessPendingDesc: "Permission will be requested when enabled.",
-            .refreshing: "⏳ Refreshing...",
-            .lastUpdate: "Last updated: %@",
-            .refreshNow: "Refresh Now",
-            .noDatabaseAuth: "⚠️ Database access not authorized, auto-refresh unavailable",
-            .noTodos: "No todo items",
-            .moreItems: "More... (%d remaining)",
-            .openInBear: "Open in Bear",
-            .settingsMenu: "Settings...",
-            .quit: "Quit",
-            .remindersSection: "Reminders",
-            .todaySection: "Today",
-            .tomorrowSection: "Tomorrow",
-            .scheduledSection: "Scheduled",
-            .unscheduledSection: "Unscheduled",
-            .pauseSync: "Pause Sync",
-            .resumeSync: "Resume Sync",
-            .completedSection: "Completed",
-            .launchAtLogin: "Launch at Login",
-            .launchAtLoginToggle: "Launch at Login",
-            .launchAtLoginDescription: "App will automatically launch when you log in",
-            .syncInterval: "Sync Interval",
-            .syncIntervalTitle: "Sync Interval",
-            .syncIntervalImmediate: "Immediate",
-            .syncIntervalValue: "Sync after %d s",
-            .showCompletedSection: "Show Completed Items",
-            .showCompletedSectionDescription: "Display completed todos in the menu bar",
-            .allBearTodosCompleted: "All completed ✓"
-        ]
+    private static let enStrings: [StringKey: String] = [
+        .settings: "Settings",
+        .settingsDescription: "Configure Bear Todo sync options",
+        .systemReminders: "System Reminders",
+        .enableSync: "Enable Sync",
+        .databaseAccess: "Database Access Authorization",
+        .authorized: "Authorized",
+        .notAuthorized: "Not Authorized",
+        .accessGranted: "Database access authorized, auto-refresh available.",
+        .accessNotGranted: "Database access not authorized, auto-refresh unavailable.",
+        .reauthorize: "Re-authorize",
+        .authorizeAccess: "Authorize Access",
+        .reminderAccessDenied: "Cannot access Reminders, please check system permission settings",
+        .authorizePrompt: "Authorize Access",
+        .authorizeMessage: "Please select Bear's Application Data directory",
+        .cannotOpenPanel: "Cannot open file chooser",
+        .saveAuthFailed: "Failed to save authorization",
+        .language: "Language",
+        .languageAuto: "Auto (Follow System)",
+        .languageChinese: "简体中文",
+        .languageEnglish: "English",
+        .reminderAccessAllowed: "Allowed",
+        .reminderAccessDeniedText: "Denied",
+        .reminderAccessRestricted: "Restricted",
+        .reminderAccessPending: "Pending",
+        .reminderAccessUnknown: "Unknown",
+        .reminderAccessGrantedDesc: "Reminder access granted, todos will sync to Reminders.",
+        .reminderAccessDeniedDesc:
+            "Permission denied. Go to System Settings → Privacy & Security → Reminders to enable.",
+        .reminderAccessRestrictedDesc: "Access restricted, cannot access Reminders.",
+        .reminderAccessPendingDesc: "Permission will be requested when enabled.",
+        .refreshing: "⏳ Refreshing...",
+        .lastUpdate: "Last updated: %@",
+        .refreshNow: "Refresh Now",
+        .noDatabaseAuth: "⚠️ Database access not authorized, auto-refresh unavailable",
+        .noTodos: "No todo items",
+        .moreItems: "More... (%d remaining)",
+        .openInBear: "Open in Bear",
+        .settingsMenu: "Settings...",
+        .quit: "Quit",
+        .remindersSection: "Reminders",
+        .todaySection: "Today",
+        .tomorrowSection: "Tomorrow",
+        .scheduledSection: "Scheduled",
+        .unscheduledSection: "Unscheduled",
+        .pauseSync: "Pause Sync",
+        .resumeSync: "Resume Sync",
+        .completedSection: "Completed",
+        .launchAtLogin: "Launch at Login",
+        .launchAtLoginToggle: "Launch at Login",
+        .launchAtLoginDescription: "App will automatically launch when you log in",
+        .syncInterval: "Sync Interval",
+        .syncIntervalTitle: "Sync Interval",
+        .syncIntervalImmediate: "Immediate",
+        .syncIntervalValue: "Sync after %d s",
+        .showCompletedSection: "Show Completed Items",
+        .showCompletedSectionDescription: "Display completed todos in the menu bar",
+        .allBearTodosCompleted: "All completed ✓",
+    ]
 
-        private static func tr(_ key: StringKey) -> String {
-            let table: [StringKey: String]
-            switch shared.resolvedLanguage {
-            case .simplifiedChinese: table = zhStrings
-            case .english: table = enStrings
-            case .auto: table = enStrings
-            }
-            return table[key] ?? enStrings[key] ?? ""
+    private static func tr(_ key: StringKey) -> String {
+        let table: [StringKey: String]
+        switch shared.resolvedLanguage {
+        case .simplifiedChinese: table = zhStrings
+        case .english: table = enStrings
+        case .auto: table = enStrings
         }
+        return table[key] ?? enStrings[key] ?? ""
+    }
 
     static var settings: String { tr(.settings) }
     static var settingsDescription: String { tr(.settingsDescription) }
@@ -299,8 +302,8 @@ final class L10n: ObservableObject {
     }
 }
 
-private extension UserDefaults {
-    @objc var app_language_raw: String {
+extension UserDefaults {
+    @objc fileprivate var app_language_raw: String {
         return string(forKey: "app_language") ?? ""
     }
 }

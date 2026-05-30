@@ -46,21 +46,17 @@ brew update && brew upgrade --cask bear-todo-menu-bar
 ### 方式三：从源码构建
 
 ```bash
-# 1. 克隆项目
 git clone https://github.com/ECHOUniverse/BearTodoMenuBar.git
 cd BearTodoMenuBar
 
-# 2. 构建
-swift build
-
-# 3. 打包成 .app
-./scripts/build-app.sh
-
-# 4. 本地运行（不安装到 /Applications）
-./scripts/run-local.sh
-
-# 5. 或安装到系统
+# 构建、安装到 /Applications 并启动
 ./scripts/run.sh
+
+# 或：构建并从 build 目录直接启动（不安装）
+./scripts/run.sh -l
+
+# 或：仅构建，不启动
+./scripts/run.sh -b
 ```
 
 ## 首次配置

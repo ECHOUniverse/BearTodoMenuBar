@@ -12,19 +12,14 @@ jobs:
   release:
     runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Cache SPM dependencies
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .build
           key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
-
-      - name: Make build script executable
-        run: chmod +x ./scripts/build-app.sh
 
       - name: Build .app bundle
         env:
@@ -34,16 +29,11 @@ jobs:
       - name: Install create-dmg
         run: brew install create-dmg
 
-      - name: Make DMG script executable
-        run: chmod +x ./scripts/create-dmg.sh
-
       - name: Create DMG
         run: ./scripts/create-dmg.sh
 
       - name: Package .app into zip
-        run: |
-          cd .build/release
-          zip -r BearTodoMenuBar.zip BearTodoMenuBar.app
+        run: cd .build/release && zip -r BearTodoMenuBar.zip BearTodoMenuBar.app
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -57,9 +47,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.TAP_REPO_PAT }}
         run: |
-          VERSION="${GITHUB_REF_NAME}"
-          echo "Triggering tap update for ${VERSION}..."
           gh workflow run update-cask.yml \
             --repo ECHOUniverse/homebrew-bear-tap \
             --ref main \
-            --field version="${VERSION}"
+            --field version="${{ github.ref_name }}"

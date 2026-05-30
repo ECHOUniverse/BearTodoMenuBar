@@ -6,123 +6,68 @@ BUILD_DIR=".build/release"
 APP_PATH="${BUILD_DIR}/${APP_NAME}.app"
 CERT_NAME="BearTodo Developer"
 
-# CI uses a temporary keychain; local uses the login keychain for persistence
-if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
-    CI_KEYCHAIN_PATH="$HOME/Library/Keychains/temp-build.keychain-db"
+cleanup_keychain() {
+  [ -n "$CI_KEYCHAIN" ] && security delete-keychain "$CI_KEYCHAIN" 2>/dev/null || true
+}
+trap cleanup_keychain EXIT
+
+# --- Keychain setup ---
+if [ -n "${CI}${GITHUB_ACTIONS}" ]; then
+  CI_KEYCHAIN="$(mktemp -d)/temp.keychain-db"
+  security create-keychain -p "" "$CI_KEYCHAIN"
+  security unlock-keychain -p "" "$CI_KEYCHAIN"
+  security list-keychains -d user -s "$CI_KEYCHAIN"
+  KEYCHAIN="$CI_KEYCHAIN"
+else
+  KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 fi
 
-# --- Ensure consistent code signing identity ---
-# Ad-hoc signing (--sign -) changes per build, which resets macOS TCC permissions.
-# A persistent self-signed certificate ensures the same identity across rebuilds,
-# so granted permissions (Reminders, etc.) survive reinstall.
-ensure_certificate() {
-    # On CI, use a temporary keychain since the login keychain may be locked.
-    # Locally, use the login keychain for persistence across builds.
-    if [ -n "$CI_KEYCHAIN_PATH" ]; then
-        if security find-certificate -c "$CERT_NAME" "$CI_KEYCHAIN_PATH" 2>/dev/null | grep -q "\"$CERT_NAME\""; then
-            echo "  ✅ Code signing certificate '$CERT_NAME' found"
-            return 0
-        fi
-    else
-        if security find-certificate -c "$CERT_NAME" 2>/dev/null | grep -q "\"$CERT_NAME\""; then
-            echo "  ✅ Code signing certificate '$CERT_NAME' found"
-            return 0
-        fi
-    fi
-
-    echo "  🔧 Creating self-signed code signing certificate '$CERT_NAME'..."
-
-    TMPDIR=$(mktemp -d)
-    trap "rm -rf $TMPDIR" EXIT
-
-    # Generate RSA key
-    openssl genrsa -out "$TMPDIR/key.pem" 2048 2>&1
-
-    # Config with code signing extended key usage
-    cat > "$TMPDIR/cert.cfg" << EOF
+# --- Ensure signing certificate ---
+if ! security find-certificate -c "$CERT_NAME" "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
+  echo "  🔧 Creating code signing certificate '$CERT_NAME'..."
+  TMP="$(mktemp -d)"
+  openssl genrsa -out "$TMP/key.pem" 2048 2>&1
+  cat > "$TMP/cert.cfg" << 'CEOF'
 [ req ]
 default_bits        = 2048
 distinguished_name  = req_distinguished_name
 x509_extensions     = v3_req
 prompt              = no
-
 [ req_distinguished_name ]
-commonName          = $CERT_NAME
-
 [ v3_req ]
 basicConstraints    = critical, CA:FALSE
 keyUsage            = digitalSignature
 extendedKeyUsage    = codeSigning
 subjectKeyIdentifier = hash
-EOF
+CEOF
+  echo "commonName = ${CERT_NAME}" >> "$TMP/cert.cfg"
+  openssl req -x509 -new -key "$TMP/key.pem" -out "$TMP/cert.pem" -days 3650 -config "$TMP/cert.cfg" -extensions v3_req 2>&1
+  openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" -out "$TMP/cert.p12" -passout pass:temp 2>&1
+  security import "$TMP/cert.p12" -k "$KEYCHAIN" -P temp -A 2>&1
+  [ -n "$CI_KEYCHAIN" ] && security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN" 2>&1
+  rm -rf "$TMP"
+  echo "  ✅ Certificate created"
+fi
 
-    openssl req -x509 -new \
-        -key "$TMPDIR/key.pem" \
-        -out "$TMPDIR/cert.pem" \
-        -days 3650 \
-        -config "$TMPDIR/cert.cfg" \
-        -extensions v3_req 2>&1
-
-    # Package as PKCS12 (no -legacy: macOS LibreSSL doesn't support it)
-    openssl pkcs12 -export \
-        -inkey "$TMPDIR/key.pem" \
-        -in "$TMPDIR/cert.pem" \
-        -out "$TMPDIR/cert.p12" \
-        -passout pass:temp 2>&1
-
-    if [ -n "$CI_KEYCHAIN_PATH" ]; then
-        # CI: create and use a temporary keychain
-        security create-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
-        security unlock-keychain -p temp "$CI_KEYCHAIN_PATH" 2>&1
-        # Add to default search list so codesign finds it without --keychain flag
-        security list-keychains -s "$CI_KEYCHAIN_PATH" 2>&1
-        security import "$TMPDIR/cert.p12" -k "$CI_KEYCHAIN_PATH" -P temp -A 2>&1
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp "$CI_KEYCHAIN_PATH" 2>&1
-    else
-        # Local: import into login keychain (persistent across rebuilds)
-        security import "$TMPDIR/cert.p12" \
-            -k "$HOME/Library/Keychains/login.keychain-db" \
-            -P temp \
-            -A 2>&1
-    fi
-
-    echo "  ✅ Self-signed code signing certificate '$CERT_NAME' created"
-}
-
-# 1. Build binary
+# --- Build ---
 swift build -c release
 
-# 2. Create .app bundle structure
+# --- Assemble .app ---
 rm -rf "${APP_PATH}"
 mkdir -p "${APP_PATH}/Contents/MacOS"
 mkdir -p "${APP_PATH}/Contents/Resources"
 
-# 3. Copy binary
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_PATH}/Contents/MacOS/${APP_NAME}"
+cp "Sources/${APP_NAME}/Info.plist" "${APP_PATH}/Contents/Info.plist"
 
-# 4. Copy Info.plist
-cp "Sources/BearTodoMenuBar/Info.plist" "${APP_PATH}/Contents/Info.plist"
-
-# 4b. Inject version from environment or git tag into the bundled copy
 VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")}"
 VERSION="${VERSION#v}"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "${APP_PATH}/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$VERSION" "${APP_PATH}/Contents/Info.plist"
-echo "  📝 Injected version: $VERSION"
 
-# 5. Copy AppIcon
 cp "resources/AppIcon.icns" "${APP_PATH}/Contents/Resources/AppIcon.icns"
 
-# 6. Ensure persistent code signing certificate exists, then sign
-echo "  📝 Setting up code signing..."
-ensure_certificate
+# --- Sign ---
 codesign --force --deep --sign "$CERT_NAME" "${APP_PATH}"
 
-# Cleanup CI temporary keychain
-if [ -n "$CI_KEYCHAIN_PATH" ]; then
-    security delete-keychain "$CI_KEYCHAIN_PATH" 2>/dev/null || true
-fi
-
-echo "✅ Built ${APP_PATH}"
-echo "👉 本地运行：open ${APP_PATH}"
-echo "👉 或执行：./scripts/run-local.sh"
+echo "✅ ${APP_PATH}"

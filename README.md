@@ -46,21 +46,17 @@ Go to [Releases](https://github.com/ECHOUniverse/BearTodoMenuBar/releases) and d
 ### Option 3: Build from Source
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/ECHOUniverse/BearTodoMenuBar.git
 cd BearTodoMenuBar
 
-# 2. Build
-swift build
-
-# 3. Package into .app
-./scripts/build-app.sh
-
-# 4. Run locally (without installing to /Applications)
-./scripts/run-local.sh
-
-# 5. Or install system-wide
+# Build, install to /Applications, and launch
 ./scripts/run.sh
+
+# Or: build and run from build directory (no install)
+./scripts/run.sh -l
+
+# Or: build only, no launch
+./scripts/run.sh -b
 ```
 
 ## First-Time Setup

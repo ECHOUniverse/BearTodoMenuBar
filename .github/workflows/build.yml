@@ -10,22 +10,14 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Cache SPM dependencies
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .build
           key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
-
-      - name: Build
-        run: swift build
-
-      - name: Make build script executable
-        run: chmod +x ./scripts/build-app.sh
 
       - name: Build .app bundle
         run: ./scripts/build-app.sh

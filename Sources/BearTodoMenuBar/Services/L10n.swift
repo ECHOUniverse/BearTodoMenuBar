@@ -88,6 +88,7 @@ final class L10n: ObservableObject {
         case todaySection
         case tomorrowSection
         case scheduledSection
+        case overdueSection
         case unscheduledSection
         case pauseSync
         case resumeSync
@@ -147,6 +148,7 @@ final class L10n: ObservableObject {
         .todaySection: "今天",
         .tomorrowSection: "明天",
         .scheduledSection: "已安排",
+        .overdueSection: "已逾期",
         .unscheduledSection: "未安排",
         .pauseSync: "暂停同步",
         .resumeSync: "开始同步",
@@ -207,6 +209,7 @@ final class L10n: ObservableObject {
         .todaySection: "Today",
         .tomorrowSection: "Tomorrow",
         .scheduledSection: "Scheduled",
+        .overdueSection: "Overdue",
         .unscheduledSection: "Unscheduled",
         .pauseSync: "Pause Sync",
         .resumeSync: "Resume Sync",
@@ -273,6 +276,7 @@ final class L10n: ObservableObject {
     static var todaySection: String { tr(.todaySection) }
     static var tomorrowSection: String { tr(.tomorrowSection) }
     static var scheduledSection: String { tr(.scheduledSection) }
+    static var overdueSection: String { tr(.overdueSection) }
     static var unscheduledSection: String { tr(.unscheduledSection) }
     static var pauseSync: String { tr(.pauseSync) }
     static var resumeSync: String { tr(.resumeSync) }

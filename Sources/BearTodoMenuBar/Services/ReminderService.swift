@@ -209,6 +209,7 @@ final class ReminderService {
                 byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
             let tomorrowComponents = Calendar.current.dateComponents([.year, .month, .day], from: tomorrowDate)
 
+            var overdueItems: [SystemReminderItem] = []
             var todayItems: [SystemReminderItem] = []
             var tomorrowItems: [SystemReminderItem] = []
             var scheduledItems: [SystemReminderItem] = []
@@ -227,10 +228,18 @@ final class ReminderService {
                 let identifier = reminder.calendarItemIdentifier
                 let category = self.categorizeDueDate(
                     from: reminder.dueDateComponents, today: todayComponents, tomorrow: tomorrowComponents)
+                let dueDate: Date? = {
+                    if let comps = reminder.dueDateComponents {
+                        return Calendar.current.date(from: comps)
+                    }
+                    return nil
+                }()
                 let item = SystemReminderItem(
-                    id: identifier, title: title, dueCategory: category, reminderIdentifier: identifier)
+                    id: identifier, title: title, dueCategory: category,
+                    reminderIdentifier: identifier, dueDate: dueDate)
 
                 switch category {
+                case .overdue: overdueItems.append(item)
                 case .today: todayItems.append(item)
                 case .tomorrow: tomorrowItems.append(item)
                 case .scheduled: scheduledItems.append(item)
@@ -243,8 +252,8 @@ final class ReminderService {
             }
 
             let allItems =
-                sortBlock(todayItems) + sortBlock(tomorrowItems) + sortBlock(scheduledItems)
-                + sortBlock(unscheduledItems)
+                sortBlock(overdueItems) + sortBlock(todayItems) + sortBlock(tomorrowItems)
+                + sortBlock(scheduledItems) + sortBlock(unscheduledItems)
 
             Task { @MainActor in
                 completion(allItems)
@@ -332,11 +341,18 @@ final class ReminderService {
 
         if year == today.year && month == today.month && day == today.day {
             return .today
-        } else if year == tomorrow.year && month == tomorrow.month && day == tomorrow.day {
-            return .tomorrow
-        } else {
-            return .scheduled
         }
+        if year == tomorrow.year && month == tomorrow.month && day == tomorrow.day {
+            return .tomorrow
+        }
+
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        if let dueDate = cal.date(from: components), dueDate < todayStart {
+            return .overdue
+        }
+
+        return .scheduled
     }
 
     func isAuthorizedStatus(_ status: EKAuthorizationStatus) -> Bool {

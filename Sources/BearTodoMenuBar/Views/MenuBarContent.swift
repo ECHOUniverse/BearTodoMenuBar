@@ -237,6 +237,7 @@ struct MenuBarContent: View {
                 guard !filtered.isEmpty else { continue }
                 let catTitle: String = {
                     switch category {
+                    case .overdue: return L10n.overdueSection
                     case .today: return L10n.todaySection
                     case .tomorrow: return L10n.tomorrowSection
                     case .scheduled: return L10n.scheduledSection
@@ -257,6 +258,7 @@ struct MenuBarContent: View {
                             ReminderMenuItemView(
                                 title: reminder.title,
                                 reminderIdentifier: reminder.reminderIdentifier,
+                                dueDate: reminder.dueDate,
                                 onToggleComplete: { id, completion in
                                     ReminderService.shared.toggleReminderCompletion(
                                         identifier: id, completion: completion)

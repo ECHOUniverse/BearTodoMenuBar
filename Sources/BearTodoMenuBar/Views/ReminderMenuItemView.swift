@@ -3,6 +3,7 @@ import SwiftUI
 struct ReminderMenuItemView: View {
     let title: String
     let reminderIdentifier: String
+    let dueDate: Date?
     var onToggleComplete: (String, @escaping (Bool) -> Void) -> Void
     var onOpenReminder: () -> Void
     var onRequestRefresh: () -> Void
@@ -26,11 +27,18 @@ struct ReminderMenuItemView: View {
             Button {
                 onOpenReminder()
             } label: {
-                Text(title)
-                    .font(.body)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if let dueDate = dueDate {
+                        Text(dueDate, style: .date)
+                            .font(.system(size: 10))
+                            .foregroundColor(.red)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
         }

@@ -22,6 +22,7 @@ struct SyncResult {
 }
 
 enum ReminderDueCategory: String, CaseIterable {
+    case overdue
     case today
     case tomorrow
     case scheduled
@@ -33,4 +34,5 @@ struct SystemReminderItem: Identifiable {
     let title: String
     let dueCategory: ReminderDueCategory
     let reminderIdentifier: String
+    let dueDate: Date?
 }

@@ -103,6 +103,10 @@ final class L10n: ObservableObject {
         case showCompletedSection
         case showCompletedSectionDescription
         case allBearTodosCompleted
+        case save
+        case cancel
+        case generalSettings
+        case syncIntegration
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -163,6 +167,10 @@ final class L10n: ObservableObject {
         .showCompletedSection: "显示已完成事项",
         .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项",
         .allBearTodosCompleted: "已全部完成 ✓",
+        .save: "保存",
+        .cancel: "取消",
+        .generalSettings: "一般设置",
+        .syncIntegration: "同步与集成",
     ]
 
     private static let enStrings: [StringKey: String] = [
@@ -224,6 +232,10 @@ final class L10n: ObservableObject {
         .showCompletedSection: "Show Completed Items",
         .showCompletedSectionDescription: "Display completed todos in the menu bar",
         .allBearTodosCompleted: "All completed ✓",
+        .save: "Save",
+        .cancel: "Cancel",
+        .generalSettings: "General",
+        .syncIntegration: "Sync & Integration",
     ]
 
     private static func tr(_ key: StringKey) -> String {
@@ -296,6 +308,10 @@ final class L10n: ObservableObject {
     static var showCompletedSection: String { tr(.showCompletedSection) }
     static var showCompletedSectionDescription: String { tr(.showCompletedSectionDescription) }
     static var allBearTodosCompleted: String { tr(.allBearTodosCompleted) }
+    static var save: String { tr(.save) }
+    static var cancel: String { tr(.cancel) }
+    static var generalSettings: String { tr(.generalSettings) }
+    static var syncIntegration: String { tr(.syncIntegration) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

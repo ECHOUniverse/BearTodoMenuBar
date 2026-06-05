@@ -7,33 +7,36 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var l10n = L10n.shared
-    @AppStorage("app_language") var language: Language = .auto
     @State private var showError = false
     @State private var errorMessage: String = ""
     @State private var isAuthorized: Bool = false
-    @State private var isReminderSyncEnabled: Bool = false
-    @State private var isLaunchAtLoginEnabled: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
-    @State private var isCompletedSectionVisible: Bool = false
-    @State private var syncIntervalIndex: Double = 0
     @State private var animateContent = true
+
+    // Draft state — buffered, committed only on Save
+    @State private var draftReminderSync: Bool
+    @State private var draftLaunchAtLogin: Bool
+    @State private var draftCompletedSection: Bool
+    @State private var draftSyncIntervalIndex: Double
+    @State private var draftLanguage: Language
 
     private let syncValues = [0, 1, 3, 5, 7]
 
     init() {
-        // Initialize persisted toggle states before the view renders,
-        // so onChange handlers don't fire on initial appearance.
-        _isReminderSyncEnabled = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
-        _isLaunchAtLoginEnabled = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
-        _isCompletedSectionVisible = State(initialValue: KeychainStorage.shared.isCompletedSectionVisible)
-        let stored = KeychainStorage.shared.syncInterval
+        let storedInterval = KeychainStorage.shared.syncInterval
         let validValues = [0, 1, 3, 5, 7]
-        _syncIntervalIndex = State(initialValue: Double(validValues.firstIndex(of: stored) ?? 0))
+        let idx = Double(validValues.firstIndex(of: storedInterval) ?? 0)
+
+        _draftReminderSync = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
+        _draftLaunchAtLogin = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
+        _draftCompletedSection = State(initialValue: KeychainStorage.shared.isCompletedSectionVisible)
+        _draftSyncIntervalIndex = State(initialValue: idx)
+        _draftLanguage = State(initialValue: L10n.shared.language)
     }
 
     var body: some View {
         ZStack {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(spacing: 0) {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.settings)
@@ -44,213 +47,281 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 4)
+                .padding(.bottom, 16)
                 .staggeredEntrance(0, animate: animateContent)
 
-                // MARK: Reminders Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "bell.fill")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.systemReminders)
-                                .font(.headline)
-                            Spacer()
-                            StatusPill(
-                                icon: reminderAccessIcon,
-                                text: reminderAccessTextShort,
-                                color: reminderAccessColor
-                            )
-                            .animation(.default, value: reminderAccessStatus)
+                // Two-column layout
+                HStack(alignment: .top, spacing: 20) {
+                    // Left Column — General
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionHeader(L10n.generalSettings)
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "globe")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.language)
+                                        .font(.headline)
+                                }
+
+                                Picker("", selection: $draftLanguage) {
+                                    ForEach(Language.allCases, id: \.self) { lang in
+                                        Text(lang.displayName).tag(lang)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .onChange(of: draftLanguage) { lang in
+                                    l10n.language = lang
+                                }
+                            }
                         }
 
-                        Toggle(isOn: $isReminderSyncEnabled) {
-                            Text(L10n.enableSync)
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "power")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.launchAtLogin)
+                                        .font(.headline)
+                                    Spacer()
+                                }
+
+                                Toggle(isOn: $draftLaunchAtLogin) {
+                                    Text(L10n.launchAtLoginToggle)
+                                        .font(.callout)
+                                }
+                                .toggleStyle(.switch)
+
+                                Text(L10n.launchAtLoginDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "checkmark.circle")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.showCompletedSection)
+                                        .font(.headline)
+                                    Spacer()
+                                }
+
+                                Toggle(isOn: $draftCompletedSection) {
+                                    Text(L10n.showCompletedSectionDescription)
+                                        .font(.callout)
+                                }
+                                .toggleStyle(.switch)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .staggeredEntrance(1, animate: animateContent)
+
+                    // Divider
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.10))
+                        .frame(width: 1)
+
+                    // Right Column — Sync & Integration
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionHeader(L10n.syncIntegration)
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "bell.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.systemReminders)
+                                        .font(.headline)
+                                    Spacer()
+                                    StatusPill(
+                                        icon: reminderAccessIcon,
+                                        text: reminderAccessTextShort,
+                                        color: reminderAccessColor
+                                    )
+                                    .animation(.default, value: reminderAccessStatus)
+                                }
+
+                                Toggle(isOn: $draftReminderSync) {
+                                    Text(L10n.enableSync)
+                                        .font(.callout)
+                                }
+                                .toggleStyle(.switch)
+
+                                if !reminderAccessDescription.isEmpty {
+                                    Text(reminderAccessDescription)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.syncInterval)
+                                        .font(.headline)
+                                }
+
+                                Slider(value: $draftSyncIntervalIndex, in: 0...4, step: 1)
+
+                                Text(L10n.syncIntervalDescription(syncValues[Int(draftSyncIntervalIndex)]))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .contentTransition(.opacity)
+                                    .animation(.default, value: draftSyncIntervalIndex)
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "archivebox.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.databaseAccess)
+                                        .font(.headline)
+                                    Spacer()
+                                    StatusPill(
+                                        icon: isAuthorized ? "checkmark" : "exclamationmark",
+                                        text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
+                                        color: isAuthorized ? .green : .orange
+                                    )
+                                    .animation(.default, value: isAuthorized)
+                                }
+
+                                Text(
+                                    isAuthorized
+                                        ? L10n.accessGranted
+                                        : L10n.accessNotGranted
+                                )
                                 .font(.callout)
-                        }
-                        .toggleStyle(.switch)
-                        .onChange(of: isReminderSyncEnabled) { enabled in
-                            handleReminderSyncToggle(enabled)
-                        }
-
-                        if !reminderAccessDescription.isEmpty {
-                            Text(reminderAccessDescription)
-                                .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
+
+                                Button {
+                                    requestBookmark()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
+                                        Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
+                                    }
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.regular)
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity)
+                    .staggeredEntrance(2, animate: animateContent)
                 }
-                .staggeredEntrance(1, animate: animateContent)
 
-                // MARK: Sync Interval Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "clock.arrow.circlepath")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.syncInterval)
-                                .font(.headline)
-                        }
+                Spacer(minLength: 16)
 
-                        Slider(value: $syncIntervalIndex, in: 0...4, step: 1)
-
-                        Text(L10n.syncIntervalDescription(syncValues[Int(syncIntervalIndex)]))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .contentTransition(.opacity)
-                            .animation(.default, value: syncIntervalIndex)
+                // Bottom bar: GitHub + Save/Cancel
+                HStack {
+                    Link(destination: URL(string: "https://github.com/ECHOUniverse/BearTodoMenuBar")!) {
+                        Image(nsImage: Self.gitHubIcon)
+                            .resizable()
+                            .frame(width: 18, height: 18)
                     }
-                }
-                .staggeredEntrance(2, animate: animateContent)
-                .onChange(of: syncIntervalIndex) { _ in
-                    let value = syncValues[Int(syncIntervalIndex)]
-                    KeychainStorage.shared.syncInterval = value
-                }
+                    .buttonStyle(.plain)
 
-                // MARK: Launch at Login Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "power")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.launchAtLogin)
-                                .font(.headline)
-                            Spacer()
-                        }
+                    Spacer()
 
-                        Toggle(isOn: $isLaunchAtLoginEnabled) {
-                            Text(L10n.launchAtLoginToggle)
-                                .font(.callout)
-                        }
-                        .toggleStyle(.switch)
-                        .onChange(of: isLaunchAtLoginEnabled) { enabled in
-                            handleLaunchAtLoginToggle(enabled)
-                        }
-
-                        Text(L10n.launchAtLoginDescription)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    Button(L10n.cancel) {
+                        closeWindow()
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    Button(L10n.save) {
+                        saveSettings()
+                    }
+                    .fontWeight(.semibold)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
                 }
                 .staggeredEntrance(3, animate: animateContent)
-
-                // MARK: Completed Section Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.showCompletedSection)
-                                .font(.headline)
-                            Spacer()
-                        }
-
-                        Toggle(isOn: $isCompletedSectionVisible) {
-                            Text(L10n.showCompletedSectionDescription)
-                                .font(.callout)
-                        }
-                        .toggleStyle(.switch)
-                        .onChange(of: isCompletedSectionVisible) { visible in
-                            KeychainStorage.shared.isCompletedSectionVisible = visible
-                        }
-                    }
-                }
-                .staggeredEntrance(4, animate: animateContent)
-
-                // MARK: Database Auth Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "archivebox.fill")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.databaseAccess)
-                                .font(.headline)
-                            Spacer()
-                            StatusPill(
-                                icon: isAuthorized ? "checkmark" : "exclamationmark",
-                                text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
-                                color: isAuthorized ? .green : .orange
-                            )
-                            .animation(.default, value: isAuthorized)
-                        }
-
-                        Text(
-                            isAuthorized
-                                ? L10n.accessGranted
-                                : L10n.accessNotGranted
-                        )
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                        Button {
-                            requestBookmark()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
-                                Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
-                            }
-                            .font(.callout)
-                            .fontWeight(.medium)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.regular)
-                    }
-                }
-                .staggeredEntrance(5, animate: animateContent)
-
-                // MARK: Language Card
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "globe")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                            Text(L10n.language)
-                                .font(.headline)
-                        }
-
-                        Picker("", selection: $language) {
-                            ForEach(Language.allCases, id: \.self) { lang in
-                                Text(lang.displayName).tag(lang)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-                .staggeredEntrance(6, animate: animateContent)
-
-                Spacer(minLength: 4)
-
-                // GitHub Link
-                Link(destination: URL(string: "https://github.com/ECHOUniverse/BearTodoMenuBar")!) {
-                    Image(nsImage: Self.gitHubIcon)
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .staggeredEntrance(7, animate: animateContent)
-
-                Spacer(minLength: 8)
             }
             .padding(24)
-
         }
-        .frame(width: 420)
         .onAppear {
             isAuthorized = BearBookmarkManager.shared.hasBookmark
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
         }
     }
+
+    // MARK: - Section Header
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 4)
+            .padding(.bottom, 2)
+    }
+
+    // MARK: - Save
+
+    private func saveSettings() {
+        // Reminders sync toggle
+        if draftReminderSync != KeychainStorage.shared.isReminderSyncEnabled {
+            KeychainStorage.shared.isReminderSyncEnabled = draftReminderSync
+            if draftReminderSync {
+                Task {
+                    _ = await ReminderService.shared.requestAccess()
+                }
+            }
+        }
+
+        // Sync interval
+        let interval = syncValues[Int(draftSyncIntervalIndex)]
+        if interval != KeychainStorage.shared.syncInterval {
+            KeychainStorage.shared.syncInterval = interval
+        }
+
+        // Launch at login
+        if draftLaunchAtLogin != KeychainStorage.shared.isLaunchAtLoginEnabled {
+            KeychainStorage.shared.isLaunchAtLoginEnabled = draftLaunchAtLogin
+            if draftLaunchAtLogin {
+                try? SMAppService.mainApp.register()
+            } else {
+                try? SMAppService.mainApp.unregister()
+            }
+        }
+
+        // Completed section visibility
+        if draftCompletedSection != KeychainStorage.shared.isCompletedSectionVisible {
+            KeychainStorage.shared.isCompletedSectionVisible = draftCompletedSection
+        }
+
+        closeWindow()
+    }
+
+    // MARK: - Close Window
+
+    private func closeWindow() {
+        NSApp.keyWindow?.orderOut(nil)
+    }
+
+    // MARK: - GitHub Icon
 
     private static var gitHubIcon: NSImage = {
         guard let url = Bundle.module.url(forResource: "github-mark", withExtension: "png"),
@@ -322,49 +393,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Actions
-
-    private func handleReminderSyncToggle(_ enabled: Bool) {
-        KeychainStorage.shared.isReminderSyncEnabled = enabled
-        if enabled {
-            Task {
-                let granted = await ReminderService.shared.requestAccess()
-                await MainActor.run {
-                    reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
-                    if !granted {
-                        isReminderSyncEnabled = false
-                        KeychainStorage.shared.isReminderSyncEnabled = false
-                        errorMessage = L10n.reminderAccessDenied
-                        showError = true
-                    }
-                }
-            }
-        } else {
-            reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
-        }
-    }
-
-    private func handleLaunchAtLoginToggle(_ enabled: Bool) {
-        if enabled {
-            do {
-                try SMAppService.mainApp.register()
-                KeychainStorage.shared.isLaunchAtLoginEnabled = true
-            } catch {
-                isLaunchAtLoginEnabled = false
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        } else {
-            do {
-                try SMAppService.mainApp.unregister()
-                KeychainStorage.shared.isLaunchAtLoginEnabled = false
-            } catch {
-                isLaunchAtLoginEnabled = true
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        }
-    }
+    // MARK: - Bookmark Request
 
     private func requestBookmark() {
         let panel = NSOpenPanel()
@@ -401,5 +430,4 @@ struct SettingsView: View {
             }
         }
     }
-
 }

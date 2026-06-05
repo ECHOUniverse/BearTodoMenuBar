@@ -49,18 +49,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func openSettings(_ sender: Any?) {
         if let window = settingsWindow {
-            window.makeKeyAndOrderFront(sender)
-            NSApp.activate(ignoringOtherApps: true)
-            return
+            window.orderOut(nil)
+            settingsWindow = nil
         }
 
         let hostingView = NSHostingView(
             rootView: SettingsView()
-                .frame(width: 420)
+                .frame(minWidth: 560, idealWidth: 640, minHeight: 480)
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 540),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false

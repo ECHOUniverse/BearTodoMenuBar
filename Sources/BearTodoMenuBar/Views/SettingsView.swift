@@ -72,32 +72,27 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 16)
                 .staggeredEntrance(0, animate: animateContent)
+                .animation(nil, value: selectedTab)
 
                 // Tab switcher
                 tabSwitcher
                     .padding(.bottom, 16)
                     .staggeredEntrance(1, animate: animateContent)
+                    .animation(nil, value: selectedTab)
 
-                // Content area
+                // Content area — both tabs always rendered to keep layout height stable
                 ZStack {
-                    if selectedTab == .general {
-                        VStack(alignment: .leading, spacing: 8) {
-                            generalTabContent
-                        }
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .leading)),
-                            removal: .opacity.combined(with: .move(edge: .trailing))
-                        ))
+                    VStack(alignment: .leading, spacing: 8) {
+                        generalTabContent
                     }
-                    if selectedTab == .sync {
-                        VStack(alignment: .leading, spacing: 8) {
-                            syncTabContent
-                        }
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)),
-                            removal: .opacity.combined(with: .move(edge: .leading))
-                        ))
+                    .opacity(selectedTab == .general ? 1 : 0)
+                    .offset(x: selectedTab == .general ? 0 : -30)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        syncTabContent
                     }
+                    .opacity(selectedTab == .sync ? 1 : 0)
+                    .offset(x: selectedTab == .sync ? 0 : 30)
                 }
                 .frame(maxWidth: .infinity)
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)

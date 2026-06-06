@@ -1,5 +1,27 @@
+import AppKit
 import ServiceManagement
 import SwiftUI
+
+// MARK: - Auto-Sizing Hosting View
+
+private final class AutoSizingHostingView<Content: View>: NSHostingView<Content> {
+    override func layout() {
+        super.layout()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window else { return }
+            let newSize = self.fittingSize
+            let currentHeight = window.contentLayoutRect.height
+            let delta = newSize.height - currentHeight
+            guard abs(delta) > 4, newSize.height > 0 else { return }
+            var frame = window.frame
+            frame.size.height += delta
+            frame.origin.y -= delta
+            window.setFrame(frame, display: true, animate: true)
+        }
+    }
+}
+
+// MARK: - App
 
 @main
 struct BearTodoMenuBarApp: App {
@@ -53,13 +75,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWindow = nil
         }
 
-        let hostingView = NSHostingView(
+        let hostingView = AutoSizingHostingView(
             rootView: SettingsView()
-                .frame(minWidth: 560, idealWidth: 640, minHeight: 480)
+                .frame(minWidth: 420, idealWidth: 460, minHeight: 420)
         )
 
+        let fitSize = hostingView.fittingSize
+        let windowWidth = max(460, fitSize.width)
+        let windowHeight = max(480, fitSize.height)
+
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false

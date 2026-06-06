@@ -3,6 +3,27 @@ import EventKit
 import ServiceManagement
 import SwiftUI
 
+// MARK: - Settings Tab
+
+private enum SettingsTab: String, CaseIterable {
+    case general
+    case sync
+
+    var title: String {
+        switch self {
+        case .general: return L10n.generalSettings
+        case .sync: return L10n.syncIntegration
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .general: return "gearshape"
+        case .sync: return "arrow.triangle.2.circlepath"
+        }
+    }
+}
+
 // MARK: - Settings View
 
 struct SettingsView: View {
@@ -12,6 +33,8 @@ struct SettingsView: View {
     @State private var isAuthorized: Bool = false
     @State private var reminderAccessStatus: EKAuthorizationStatus = .notDetermined
     @State private var animateContent = true
+    @State private var selectedTab: SettingsTab = .general
+    @Namespace private var tabNamespace
 
     // Draft state — buffered, committed only on Save
     @State private var draftReminderSync: Bool
@@ -50,186 +73,35 @@ struct SettingsView: View {
                 .padding(.bottom, 16)
                 .staggeredEntrance(0, animate: animateContent)
 
-                // Two-column layout
-                HStack(alignment: .top, spacing: 20) {
-                    // Left Column — General
-                    VStack(alignment: .leading, spacing: 8) {
-                        sectionHeader(L10n.generalSettings)
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "globe")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.language)
-                                        .font(.headline)
-                                }
-
-                                Picker("", selection: $draftLanguage) {
-                                    ForEach(Language.allCases, id: \.self) { lang in
-                                        Text(lang.displayName).tag(lang)
-                                    }
-                                }
-                                .pickerStyle(.segmented)
-                                .onChange(of: draftLanguage) { lang in
-                                    l10n.language = lang
-                                }
-                            }
-                        }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "power")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.launchAtLogin)
-                                        .font(.headline)
-                                    Spacer()
-                                }
-
-                                Toggle(isOn: $draftLaunchAtLogin) {
-                                    Text(L10n.launchAtLoginToggle)
-                                        .font(.callout)
-                                }
-                                .toggleStyle(.switch)
-
-                                Text(L10n.launchAtLoginDescription)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "checkmark.circle")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.showCompletedSection)
-                                        .font(.headline)
-                                    Spacer()
-                                }
-
-                                Toggle(isOn: $draftCompletedSection) {
-                                    Text(L10n.showCompletedSectionDescription)
-                                        .font(.callout)
-                                }
-                                .toggleStyle(.switch)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
+                // Tab switcher
+                tabSwitcher
+                    .padding(.bottom, 16)
                     .staggeredEntrance(1, animate: animateContent)
 
-                    // Divider
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.10))
-                        .frame(width: 1)
-
-                    // Right Column — Sync & Integration
-                    VStack(alignment: .leading, spacing: 8) {
-                        sectionHeader(L10n.syncIntegration)
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "bell.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.systemReminders)
-                                        .font(.headline)
-                                    Spacer()
-                                    StatusPill(
-                                        icon: reminderAccessIcon,
-                                        text: reminderAccessTextShort,
-                                        color: reminderAccessColor
-                                    )
-                                    .animation(.default, value: reminderAccessStatus)
-                                }
-
-                                Toggle(isOn: $draftReminderSync) {
-                                    Text(L10n.enableSync)
-                                        .font(.callout)
-                                }
-                                .toggleStyle(.switch)
-
-                                if !reminderAccessDescription.isEmpty {
-                                    Text(reminderAccessDescription)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
+                // Content area
+                ZStack {
+                    if selectedTab == .general {
+                        VStack(alignment: .leading, spacing: 8) {
+                            generalTabContent
                         }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.syncInterval)
-                                        .font(.headline)
-                                }
-
-                                Slider(value: $draftSyncIntervalIndex, in: 0...4, step: 1)
-
-                                Text(L10n.syncIntervalDescription(syncValues[Int(draftSyncIntervalIndex)]))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .contentTransition(.opacity)
-                                    .animation(.default, value: draftSyncIntervalIndex)
-                            }
-                        }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "archivebox.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.secondary)
-                                    Text(L10n.databaseAccess)
-                                        .font(.headline)
-                                    Spacer()
-                                    StatusPill(
-                                        icon: isAuthorized ? "checkmark" : "exclamationmark",
-                                        text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
-                                        color: isAuthorized ? .green : .orange
-                                    )
-                                    .animation(.default, value: isAuthorized)
-                                }
-
-                                Text(
-                                    isAuthorized
-                                        ? L10n.accessGranted
-                                        : L10n.accessNotGranted
-                                )
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                                Button {
-                                    requestBookmark()
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
-                                        Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
-                                    }
-                                    .font(.callout)
-                                    .fontWeight(.medium)
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.regular)
-                            }
-                        }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .leading)),
+                            removal: .opacity.combined(with: .move(edge: .trailing))
+                        ))
                     }
-                    .frame(maxWidth: .infinity)
-                    .staggeredEntrance(2, animate: animateContent)
+                    if selectedTab == .sync {
+                        VStack(alignment: .leading, spacing: 8) {
+                            syncTabContent
+                        }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .trailing)),
+                            removal: .opacity.combined(with: .move(edge: .leading))
+                        ))
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)
+                .staggeredEntrance(2, animate: animateContent)
 
                 Spacer(minLength: 16)
 
@@ -267,15 +139,238 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Section Header
+    // MARK: - Tab Switcher
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .padding(.leading, 4)
-            .padding(.bottom, 2)
+    @ViewBuilder
+    private var tabSwitcher: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(SettingsTab.allCases, id: \.self) { tab in
+                        let label = HStack(spacing: 6) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 13, weight: .medium))
+                            Text(tab.title)
+                                .font(.callout)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+
+                        if selectedTab == tab {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    selectedTab = tab
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffect(.regular.interactive(), in: Capsule())
+                            .glassEffectID(tab.rawValue, in: tabNamespace)
+                        } else {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    selectedTab = tab
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffectID(tab.rawValue, in: tabNamespace)
+                        }
+                    }
+                }
+            }
+            .padding(4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+            .frame(maxWidth: .infinity)
+        } else {
+            Picker("", selection: $selectedTab) {
+                ForEach(SettingsTab.allCases, id: \.self) { tab in
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 13, weight: .medium))
+                        Text(tab.title)
+                    }
+                    .tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 320)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - Tab Content
+
+    @ViewBuilder
+    private var generalTabContent: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "globe")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.language)
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Picker("", selection: $draftLanguage) {
+                    ForEach(Language.allCases, id: \.self) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: draftLanguage) { lang in
+                    l10n.language = lang
+                }
+            }
+        }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "power")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.launchAtLogin)
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Toggle(isOn: $draftLaunchAtLogin) {
+                    Text(L10n.launchAtLoginToggle)
+                        .font(.callout)
+                }
+                .toggleStyle(.switch)
+
+                Text(L10n.launchAtLoginDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.showCompletedSection)
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Toggle(isOn: $draftCompletedSection) {
+                    Text(L10n.showCompletedSectionDescription)
+                        .font(.callout)
+                }
+                .toggleStyle(.switch)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var syncTabContent: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "bell.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.systemReminders)
+                        .font(.headline)
+                    Spacer()
+                    StatusPill(
+                        icon: reminderAccessIcon,
+                        text: reminderAccessTextShort,
+                        color: reminderAccessColor
+                    )
+                    .animation(.default, value: reminderAccessStatus)
+                }
+
+                Toggle(isOn: $draftReminderSync) {
+                    Text(L10n.enableSync)
+                        .font(.callout)
+                }
+                .toggleStyle(.switch)
+
+                if !reminderAccessDescription.isEmpty {
+                    Text(reminderAccessDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.syncInterval)
+                        .font(.headline)
+                }
+
+                Slider(value: $draftSyncIntervalIndex, in: 0...4, step: 1)
+
+                Text(L10n.syncIntervalDescription(syncValues[Int(draftSyncIntervalIndex)]))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                    .animation(.default, value: draftSyncIntervalIndex)
+            }
+        }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "archivebox.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.databaseAccess)
+                        .font(.headline)
+                    Spacer()
+                    StatusPill(
+                        icon: isAuthorized ? "checkmark" : "exclamationmark",
+                        text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
+                        color: isAuthorized ? .green : .orange
+                    )
+                    .animation(.default, value: isAuthorized)
+                }
+
+                Text(
+                    isAuthorized
+                        ? L10n.accessGranted
+                        : L10n.accessNotGranted
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    requestBookmark()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
+                        Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
+                    }
+                    .font(.callout)
+                    .fontWeight(.medium)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+            }
+        }
     }
 
     // MARK: - Save

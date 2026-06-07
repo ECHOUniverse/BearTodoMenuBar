@@ -3,6 +3,7 @@ import Security
 
 extension Notification.Name {
     static let syncIntervalDidChange = Notification.Name("syncIntervalDidChange")
+    static let bearMonitorMethodDidChange = Notification.Name("bearMonitorMethodDidChange")
 }
 
 class KeychainStorage {
@@ -11,6 +12,7 @@ class KeychainStorage {
     private let launchAtLoginKey = "bear_launch_at_login_enabled"
     private let showCompletedKey = "bear_show_completed_section"
     private let syncIntervalKey = "bear_sync_interval"
+    private let monitorMethodKey = "bear_monitor_method"
     private let defaults = UserDefaults.standard
 
     private var didMigrateReminderSyncToKeychain = false
@@ -71,6 +73,20 @@ class KeychainStorage {
         set {
             defaults.set(newValue, forKey: syncIntervalKey)
             NotificationCenter.default.post(name: .syncIntervalDidChange, object: nil)
+        }
+    }
+
+    var bearMonitorMethod: BearMonitorMethod {
+        get {
+            guard let raw = defaults.string(forKey: monitorMethodKey),
+                  let method = BearMonitorMethod(rawValue: raw) else {
+                return .fileWatcher
+            }
+            return method
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: monitorMethodKey)
+            NotificationCenter.default.post(name: .bearMonitorMethodDidChange, object: nil)
         }
     }
 

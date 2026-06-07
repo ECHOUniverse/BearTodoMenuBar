@@ -19,6 +19,18 @@ enum Language: String, CaseIterable, Codable {
     }
 }
 
+enum BearMonitorMethod: String, CaseIterable, Codable {
+    case fileWatcher
+    case polling
+
+    var displayName: String {
+        switch self {
+        case .fileWatcher: return "文件监控"
+        case .polling: return "Bear 轮询"
+        }
+    }
+}
+
 final class L10n: ObservableObject {
     static let shared = L10n()
 
@@ -107,6 +119,11 @@ final class L10n: ObservableObject {
         case cancel
         case generalSettings
         case syncIntegration
+        case bearMonitorMethod
+        case bearMonitorFileWatcher
+        case bearMonitorPolling
+        case bearMonitorFileWatcherDesc
+        case bearMonitorPollingDesc
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -171,6 +188,11 @@ final class L10n: ObservableObject {
         .cancel: "取消",
         .generalSettings: "一般设置",
         .syncIntegration: "同步与集成",
+        .bearMonitorMethod: "Bear 文件监控方式",
+        .bearMonitorFileWatcher: "文件监控",
+        .bearMonitorPolling: "Bear 轮询",
+        .bearMonitorFileWatcherDesc: "通过文件系统监控 Bear 数据库变更，实时刷新。",
+        .bearMonitorPollingDesc: "定时通过 bearcli 检查变更，无需授权数据库访问。",
     ]
 
     private static let enStrings: [StringKey: String] = [
@@ -236,6 +258,11 @@ final class L10n: ObservableObject {
         .cancel: "Cancel",
         .generalSettings: "General",
         .syncIntegration: "Sync & Integration",
+        .bearMonitorMethod: "Bear Monitor Method",
+        .bearMonitorFileWatcher: "File Watcher",
+        .bearMonitorPolling: "Bear Polling",
+        .bearMonitorFileWatcherDesc: "Monitor Bear database changes via file system for real-time refresh.",
+        .bearMonitorPollingDesc: "Periodically check via bearcli, no database access required.",
     ]
 
     private static func tr(_ key: StringKey) -> String {
@@ -312,6 +339,11 @@ final class L10n: ObservableObject {
     static var cancel: String { tr(.cancel) }
     static var generalSettings: String { tr(.generalSettings) }
     static var syncIntegration: String { tr(.syncIntegration) }
+    static var bearMonitorMethod: String { tr(.bearMonitorMethod) }
+    static var bearMonitorFileWatcher: String { tr(.bearMonitorFileWatcher) }
+    static var bearMonitorPolling: String { tr(.bearMonitorPolling) }
+    static var bearMonitorFileWatcherDesc: String { tr(.bearMonitorFileWatcherDesc) }
+    static var bearMonitorPollingDesc: String { tr(.bearMonitorPollingDesc) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

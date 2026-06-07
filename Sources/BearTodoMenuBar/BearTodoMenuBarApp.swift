@@ -42,9 +42,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        let accessGranted = BearBookmarkManager.shared.startAccessing()
-        if !accessGranted {
-            scheduleBookmarkRetry(attempt: 1)
+        if KeychainStorage.shared.bearMonitorMethod == .fileWatcher {
+            let accessGranted = BearBookmarkManager.shared.startAccessing()
+            if !accessGranted {
+                scheduleBookmarkRetry(attempt: 1)
+            }
         }
 
         if SMAppService.mainApp.status == .enabled {

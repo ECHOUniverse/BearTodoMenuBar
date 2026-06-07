@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @Namespace private var tabNamespace
     @Namespace private var languageNamespace
+    @Namespace private var monitorMethodNamespace
 
     // Draft state — buffered, committed only on Save
     @State private var draftReminderSync: Bool
@@ -43,6 +44,7 @@ struct SettingsView: View {
     @State private var draftCompletedSection: Bool
     @State private var draftSyncIntervalIndex: Double
     @State private var draftLanguage: Language
+    @State private var draftMonitorMethod: BearMonitorMethod
 
     private let syncValues = [0, 1, 3, 5, 7]
 
@@ -56,6 +58,7 @@ struct SettingsView: View {
         _draftCompletedSection = State(initialValue: KeychainStorage.shared.isCompletedSectionVisible)
         _draftSyncIntervalIndex = State(initialValue: idx)
         _draftLanguage = State(initialValue: L10n.shared.language)
+        _draftMonitorMethod = State(initialValue: KeychainStorage.shared.bearMonitorMethod)
     }
 
     var body: some View {
@@ -261,6 +264,61 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Monitor Method Switcher
+
+    @ViewBuilder
+    private var monitorMethodSwitcher: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(BearMonitorMethod.allCases, id: \.self) { method in
+                        let label = Text(method.displayName)
+                            .font(.callout)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+
+                        if draftMonitorMethod == method {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    draftMonitorMethod = method
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffect(.regular.interactive(), in: Capsule())
+                            .glassEffectID(method.rawValue, in: monitorMethodNamespace)
+                        } else {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    draftMonitorMethod = method
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffectID(method.rawValue, in: monitorMethodNamespace)
+                        }
+                    }
+                }
+            }
+            .padding(4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+            .frame(maxWidth: .infinity)
+        } else {
+            Picker("", selection: $draftMonitorMethod) {
+                ForEach(BearMonitorMethod.allCases, id: \.self) { method in
+                    Text(method.displayName).tag(method)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
     // MARK: - Tab Content
 
     @ViewBuilder
@@ -382,41 +440,45 @@ struct SettingsView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
-                    Image(systemName: "archivebox.fill")
+                    Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text(L10n.databaseAccess)
+                    Text(L10n.bearMonitorMethod)
                         .font(.headline)
                     Spacer()
-                    StatusPill(
-                        icon: isAuthorized ? "checkmark" : "exclamationmark",
-                        text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
-                        color: isAuthorized ? .green : .orange
-                    )
-                    .animation(.default, value: isAuthorized)
-                }
-
-                Text(
-                    isAuthorized
-                        ? L10n.accessGranted
-                        : L10n.accessNotGranted
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-                Button {
-                    requestBookmark()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: isAuthorized ? "arrow.clockwise" : "lock.open.fill")
-                        Text(isAuthorized ? L10n.reauthorize : L10n.authorizeAccess)
+                    if draftMonitorMethod == .fileWatcher {
+                        StatusPill(
+                            icon: isAuthorized ? "checkmark" : "exclamationmark",
+                            text: isAuthorized ? L10n.authorized : L10n.notAuthorized,
+                            color: isAuthorized ? .green : .orange
+                        )
+                        .animation(.default, value: isAuthorized)
                     }
-                    .font(.callout)
-                    .fontWeight(.medium)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
+
+                monitorMethodSwitcher
+
+                Text(draftMonitorMethod == .fileWatcher
+                     ? L10n.bearMonitorFileWatcherDesc
+                     : L10n.bearMonitorPollingDesc)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if draftMonitorMethod == .fileWatcher && !isAuthorized {
+                    Button {
+                        requestBookmark()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "lock.open.fill")
+                            Text(L10n.authorizeAccess)
+                        }
+                        .font(.callout)
+                        .fontWeight(.medium)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                }
             }
         }
     }
@@ -453,6 +515,11 @@ struct SettingsView: View {
         // Completed section visibility
         if draftCompletedSection != KeychainStorage.shared.isCompletedSectionVisible {
             KeychainStorage.shared.isCompletedSectionVisible = draftCompletedSection
+        }
+
+        // Monitor method
+        if draftMonitorMethod != KeychainStorage.shared.bearMonitorMethod {
+            KeychainStorage.shared.bearMonitorMethod = draftMonitorMethod
         }
 
         closeWindow()

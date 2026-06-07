@@ -12,13 +12,19 @@ final class MenuBarViewModel: ObservableObject {
     @Published var isPaused = false
 
     private let fileWatcher = BearFileWatcher()
+    private var pollingTimer: Timer?
     private let remindersDebounce = Debounce(delay: TimeInterval(KeychainStorage.shared.syncInterval))
     private var bearIsFrontmost = false
     private var remindersIsFrontmost = false
     private var lastRefreshCompletedAt: Date = .distantPast
 
     init() {
-        setupFileWatcher()
+        let method = KeychainStorage.shared.bearMonitorMethod
+        if method == .fileWatcher {
+            setupFileWatcher()
+        } else {
+            startPolling()
+        }
         setupNotifications()
         refresh()
     }
@@ -41,6 +47,24 @@ final class MenuBarViewModel: ObservableObject {
         }
         fileWatcher.startWatching()
         fileWatcher.updateSyncInterval(TimeInterval(KeychainStorage.shared.syncInterval))
+    }
+
+    private func startPolling() {
+        stopPolling()
+        let interval = TimeInterval(KeychainStorage.shared.syncInterval)
+        let pollInterval = max(interval > 0 ? interval : 5.0, 3.0)
+        pollingTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, !self.bearIsFrontmost else { return }
+                self.refresh()
+            }
+        }
+        pollingTimer?.tolerance = pollInterval * 0.2
+    }
+
+    private func stopPolling() {
+        pollingTimer?.invalidate()
+        pollingTimer = nil
     }
 
     private func setupNotifications() {
@@ -84,6 +108,12 @@ final class MenuBarViewModel: ObservableObject {
             self,
             selector: #selector(languageDidChange),
             name: .appLanguageDidChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(monitorMethodDidChange),
+            name: .bearMonitorMethodDidChange,
             object: nil
         )
     }
@@ -145,10 +175,24 @@ final class MenuBarViewModel: ObservableObject {
         objectWillChange.send()
     }
 
+    @objc private func monitorMethodDidChange() {
+        let method = KeychainStorage.shared.bearMonitorMethod
+        if method == .fileWatcher {
+            stopPolling()
+            fileWatcher.startWatching()
+        } else {
+            fileWatcher.stopWatching()
+            startPolling()
+        }
+    }
+
     @objc private func syncIntervalDidChange() {
         let interval = TimeInterval(KeychainStorage.shared.syncInterval)
         remindersDebounce.delay = interval
         fileWatcher.updateSyncInterval(interval)
+        if KeychainStorage.shared.bearMonitorMethod == .polling {
+            startPolling()
+        }
     }
 
     // MARK: - Refresh

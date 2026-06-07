@@ -16,7 +16,7 @@ struct MenuBarContent: View {
                     .opacity(animateContent ? 1 : 0)
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: animateContent)
 
-                if !BearBookmarkManager.shared.hasBookmark {
+                if KeychainStorage.shared.bearMonitorMethod == .fileWatcher && !BearBookmarkManager.shared.hasBookmark {
                     MenuSectionCard {
                         HStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")

@@ -35,6 +35,7 @@ struct SettingsView: View {
     @State private var animateContent = true
     @State private var selectedTab: SettingsTab = .general
     @Namespace private var tabNamespace
+    @Namespace private var languageNamespace
 
     // Draft state — buffered, committed only on Save
     @State private var draftReminderSync: Bool
@@ -200,6 +201,66 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Language Switcher
+
+    @ViewBuilder
+    private var languageSwitcher: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(Language.allCases, id: \.self) { lang in
+                        let label = Text(lang.displayName)
+                            .font(.callout)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+
+                        if draftLanguage == lang {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    draftLanguage = lang
+                                    l10n.language = lang
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffect(.regular.interactive(), in: Capsule())
+                            .glassEffectID(lang.rawValue, in: languageNamespace)
+                        } else {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    draftLanguage = lang
+                                    l10n.language = lang
+                                }
+                            } label: { label }
+                            .buttonStyle(.plain)
+                            .glassEffectID(lang.rawValue, in: languageNamespace)
+                        }
+                    }
+                }
+            }
+            .padding(4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+            .frame(maxWidth: .infinity)
+        } else {
+            Picker("", selection: $draftLanguage) {
+                ForEach(Language.allCases, id: \.self) { lang in
+                    Text(lang.displayName).tag(lang)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: draftLanguage) { lang in
+                l10n.language = lang
+            }
+        }
+    }
+
     // MARK: - Tab Content
 
     @ViewBuilder
@@ -215,15 +276,7 @@ struct SettingsView: View {
                     Spacer()
                 }
 
-                Picker("", selection: $draftLanguage) {
-                    ForEach(Language.allCases, id: \.self) { lang in
-                        Text(lang.displayName).tag(lang)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: draftLanguage) { lang in
-                    l10n.language = lang
-                }
+                languageSwitcher
             }
         }
 

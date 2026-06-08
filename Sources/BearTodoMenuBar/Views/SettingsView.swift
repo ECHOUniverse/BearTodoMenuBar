@@ -8,11 +8,13 @@ import SwiftUI
 private enum SettingsTab: String, CaseIterable {
     case general
     case sync
+    case about
 
     var title: String {
         switch self {
         case .general: return L10n.generalSettings
         case .sync: return L10n.syncIntegration
+        case .about: return L10n.about
         }
     }
 
@@ -20,8 +22,19 @@ private enum SettingsTab: String, CaseIterable {
         switch self {
         case .general: return "gearshape"
         case .sync: return "arrow.triangle.2.circlepath"
+        case .about: return "info.circle.fill"
         }
     }
+}
+
+// MARK: - Update Check State
+
+private enum UpdateCheckState: Equatable {
+    case idle
+    case checking
+    case upToDate
+    case updateAvailable(String)
+    case error(String)
 }
 
 // MARK: - Settings View
@@ -45,6 +58,11 @@ struct SettingsView: View {
     @State private var draftSyncIntervalIndex: Double
     @State private var draftLanguage: Language
     @State private var draftMonitorMethod: BearMonitorMethod
+
+    // Update check
+    @State private var updateCheckState: UpdateCheckState = .idle
+    @State private var currentVersion: String = ""
+    @State private var appName: String = ""
 
     private let syncValues = [0, 1, 3, 5, 7]
 
@@ -97,6 +115,12 @@ struct SettingsView: View {
                     }
                     .opacity(selectedTab == .sync ? 1 : 0)
                     .offset(x: selectedTab == .sync ? 0 : 30)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        aboutTabContent
+                    }
+                    .opacity(selectedTab == .about ? 1 : 0)
+                    .offset(x: selectedTab == .about ? 0 : 30)
                 }
                 .frame(maxWidth: .infinity)
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedTab)
@@ -121,12 +145,14 @@ struct SettingsView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.regular)
 
-                    Button(L10n.save) {
-                        saveSettings()
+                    if selectedTab != .about {
+                        Button(L10n.save) {
+                            saveSettings()
+                        }
+                        .fontWeight(.semibold)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
                     }
-                    .fontWeight(.semibold)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
                 }
                 .staggeredEntrance(3, animate: animateContent)
             }
@@ -135,6 +161,8 @@ struct SettingsView: View {
         .onAppear {
             isAuthorized = BearBookmarkManager.shared.hasBookmark
             reminderAccessStatus = EKEventStore.authorizationStatus(for: .reminder)
+            currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+            appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "BearTodoMenuBar"
         }
     }
 
@@ -481,6 +509,177 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - About Tab Content
+
+    @ViewBuilder
+    private var aboutTabContent: some View {
+        GlassCard {
+            VStack(spacing: 16) {
+                if let image = NSApp.applicationIconImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
+                Text(appName)
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(L10n.appVersion)
+                            .foregroundStyle(.secondary)
+                        Text(currentVersion)
+                            .fontWeight(.medium)
+                    }
+                    .font(.callout)
+
+                    Text("© 2025 ECHOUniverse")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.down.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text(L10n.checkForUpdates)
+                        .font(.headline)
+                    Spacer()
+                }
+
+                switch updateCheckState {
+                case .idle:
+                    Button {
+                        checkForUpdates()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.clockwise")
+                            Text(L10n.checkForUpdates)
+                        }
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+
+                case .checking:
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text(L10n.checking)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+
+                case .upToDate:
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text(L10n.upToDate)
+                            .font(.callout)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.green)
+                    }
+                    .padding(.vertical, 4)
+
+                case .updateAvailable(let version):
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(.orange)
+                            Text(L10n.newVersionAvailable(version))
+                                .font(.callout)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.orange)
+                        }
+
+                        Link(destination: URL(string: "https://github.com/ECHOUniverse/BearTodoMenuBar/releases/latest")!) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.down.to.line")
+                                Text(L10n.openDownloadPage)
+                            }
+                            .font(.callout)
+                            .fontWeight(.medium)
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                    }
+
+                case .error(let message):
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                        Text(message)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Check for Updates
+
+    private func checkForUpdates() {
+        updateCheckState = .checking
+
+        guard let url = URL(string: "https://api.github.com/repos/ECHOUniverse/BearTodoMenuBar/releases/latest") else {
+            updateCheckState = .error(L10n.updateFailed)
+            return
+        }
+
+        let request = URLRequest(url: url, timeoutInterval: 10)
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    updateCheckState = .error(error.localizedDescription)
+                    return
+                }
+
+                guard let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let tagName = json["tag_name"] as? String else {
+                    updateCheckState = .error(L10n.updateFailed)
+                    return
+                }
+
+                let remoteVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+
+                guard compareVersion(remoteVersion, currentVersion) > 0 else {
+                    updateCheckState = .upToDate
+                    return
+                }
+
+                updateCheckState = .updateAvailable(remoteVersion)
+            }
+        }.resume()
+    }
+
+    private func compareVersion(_ v1: String, _ v2: String) -> Int {
+        let parts1 = v1.split(separator: ".").compactMap { Int($0) }
+        let parts2 = v2.split(separator: ".").compactMap { Int($0) }
+        let maxLen = max(parts1.count, parts2.count)
+
+        for i in 0..<maxLen {
+            let a = i < parts1.count ? parts1[i] : 0
+            let b = i < parts2.count ? parts2[i] : 0
+            if a < b { return -1 }
+            if a > b { return 1 }
+        }
+        return 0
     }
 
     // MARK: - Save

@@ -124,6 +124,14 @@ final class L10n: ObservableObject {
         case bearMonitorPolling
         case bearMonitorFileWatcherDesc
         case bearMonitorPollingDesc
+        case about
+        case appVersion
+        case checkForUpdates
+        case checking
+        case upToDate
+        case newVersionAvailable
+        case updateFailed
+        case openDownloadPage
     }
 
     private static let zhStrings: [StringKey: String] = [
@@ -193,6 +201,13 @@ final class L10n: ObservableObject {
         .bearMonitorPolling: "Bear 轮询",
         .bearMonitorFileWatcherDesc: "通过文件系统监控 Bear 数据库变更，实时刷新。",
         .bearMonitorPollingDesc: "定时通过 bearcli 检查变更，无需授权数据库访问。",
+        .about: "关于与更新",
+        .appVersion: "版本",
+        .checkForUpdates: "检查更新",
+        .checking: "正在检查...",
+        .upToDate: "已是最新版本",
+        .updateFailed: "检查更新失败",
+        .openDownloadPage: "打开下载页面",
     ]
 
     private static let enStrings: [StringKey: String] = [
@@ -263,6 +278,13 @@ final class L10n: ObservableObject {
         .bearMonitorPolling: "Bear Polling",
         .bearMonitorFileWatcherDesc: "Monitor Bear database changes via file system for real-time refresh.",
         .bearMonitorPollingDesc: "Periodically check via bearcli, no database access required.",
+        .about: "About & Updates",
+        .appVersion: "Version",
+        .checkForUpdates: "Check for Updates",
+        .checking: "Checking...",
+        .upToDate: "Up to Date",
+        .updateFailed: "Update Check Failed",
+        .openDownloadPage: "Open Download Page",
     ]
 
     private static func tr(_ key: StringKey) -> String {
@@ -332,6 +354,10 @@ final class L10n: ObservableObject {
         return String(format: tr(.syncIntervalValue), seconds)
     }
 
+    static func newVersionAvailable(_ version: String) -> String {
+        String(format: tr(.newVersionAvailable), version)
+    }
+
     static var showCompletedSection: String { tr(.showCompletedSection) }
     static var showCompletedSectionDescription: String { tr(.showCompletedSectionDescription) }
     static var allBearTodosCompleted: String { tr(.allBearTodosCompleted) }
@@ -344,6 +370,13 @@ final class L10n: ObservableObject {
     static var bearMonitorPolling: String { tr(.bearMonitorPolling) }
     static var bearMonitorFileWatcherDesc: String { tr(.bearMonitorFileWatcherDesc) }
     static var bearMonitorPollingDesc: String { tr(.bearMonitorPollingDesc) }
+    static var about: String { tr(.about) }
+    static var appVersion: String { tr(.appVersion) }
+    static var checkForUpdates: String { tr(.checkForUpdates) }
+    static var checking: String { tr(.checking) }
+    static var upToDate: String { tr(.upToDate) }
+    static var updateFailed: String { tr(.updateFailed) }
+    static var openDownloadPage: String { tr(.openDownloadPage) }
 
     static func lastUpdate(_ timeString: String) -> String {
         String(format: tr(.lastUpdate), timeString)

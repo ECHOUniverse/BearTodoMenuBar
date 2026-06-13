@@ -1,12 +1,6 @@
 import Foundation
 
-struct TodoLine: Sendable {
-    let text: String
-    let lineNumber: Int
-    let isCompleted: Bool
-}
-
-struct TodoItem: Identifiable, Sendable {
+struct TodoItem: Identifiable {
     let id = UUID()
     let text: String
     let noteId: String
@@ -15,23 +9,27 @@ struct TodoItem: Identifiable, Sendable {
     let isCompleted: Bool
 }
 
-struct NoteTodos: Identifiable, Sendable {
+struct NoteTodos: Identifiable {
     let id: String
     let title: String
     let todos: [TodoItem]
     let modified: Date?
 }
 
-struct SyncResult: Sendable {
+struct SyncResult {
     let completedKeys: Set<String>
     let uncompletedKeys: Set<String>
 }
 
-enum ReminderDueCategory: String, CaseIterable, Sendable {
-    case overdue, today, tomorrow, scheduled, unscheduled
+enum ReminderDueCategory: String, CaseIterable {
+    case overdue
+    case today
+    case tomorrow
+    case scheduled
+    case unscheduled
 }
 
-struct SystemReminderItem: Identifiable, Sendable {
+struct SystemReminderItem: Identifiable {
     let id: String
     let title: String
     let dueCategory: ReminderDueCategory

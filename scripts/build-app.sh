@@ -58,7 +58,7 @@ mkdir -p "${APP_PATH}/Contents/MacOS"
 mkdir -p "${APP_PATH}/Contents/Resources"
 
 cp "${BUILD_DIR}/${APP_NAME}" "${APP_PATH}/Contents/MacOS/${APP_NAME}"
-cp "Sources/${APP_NAME}/Info.plist" "${APP_PATH}/Contents/Info.plist"
+cp "Sources/${APP_NAME}/Resources/Info.plist" "${APP_PATH}/Contents/Info.plist"
 
 VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")}"
 VERSION="${VERSION#v}"

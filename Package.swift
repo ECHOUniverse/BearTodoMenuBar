@@ -1,15 +1,16 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.2
 import PackageDescription
 
 let package = Package(
     name: "BearTodoMenuBar",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v26)],
     targets: [
         .executableTarget(
             name: "BearTodoMenuBar",
-            path: "Sources",
-            exclude: ["BearTodoMenuBar/Info.plist"],
-            resources: [.process("BearTodoMenuBar/Resources")]
+            path: "Sources/BearTodoMenuBar",
+            exclude: ["Resources/Info.plist"],
+            resources: [.process("Resources")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

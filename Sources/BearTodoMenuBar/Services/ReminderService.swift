@@ -1,422 +1,159 @@
 import AppKit
-import EventKit
+@preconcurrency import EventKit
 import Foundation
 
-@MainActor
-final class ReminderService {
+final class ReminderService: @unchecked Sendable {
     static let shared = ReminderService()
-    let eventStore = EKEventStore()
     private let calendarTitle = "Bear"
     private let notesPrefix = "bear-todo-sync:"
-
     private var calendarIdentifier: String?
 
-    var isAuthorized: Bool {
-        isAuthorizedStatus(authorizationStatus)
-    }
-
-    var authorizationStatus: EKAuthorizationStatus {
-        EKEventStore.authorizationStatus(for: .reminder)
-    }
+    var authorizationStatus: EKAuthorizationStatus { EKEventStore.authorizationStatus(for: .reminder) }
+    var isAuthorized: Bool { authorizationStatus == .fullAccess }
 
     func requestAccess() async -> Bool {
-        let status = EKEventStore.authorizationStatus(for: .reminder)
-        if isAuthorizedStatus(status) {
-            return true
-        }
-
-        if #available(macOS 14.0, *) {
-            do {
-                return try await eventStore.requestFullAccessToReminders()
-            } catch {
-                print("Request full reminder access failed: \(error)")
-                return false
-            }
-        } else {
-            return await withCheckedContinuation { continuation in
-                eventStore.requestAccess(to: .reminder) { granted, error in
-                    if let error = error {
-                        print("Request reminder access failed: \(error)")
-                    }
-                    continuation.resume(returning: granted)
-                }
-            }
-        }
+        guard !isAuthorized else { return true }
+        do { return try await EKEventStore().requestFullAccessToReminders() }
+        catch { print("Reminder access failed: \(error)"); return false }
     }
 
-    func sync(todos: [TodoItem], noteModifiedDates: [String: Date?], completion: ((SyncResult) -> Void)? = nil) {
-        guard KeychainStorage.shared.isReminderSyncEnabled else {
-            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
-            return
-        }
-
-        let status = EKEventStore.authorizationStatus(for: .reminder)
-        guard isAuthorizedStatus(status) else {
-            print("Reminder access not granted, skipping sync")
-            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
-            return
-        }
-
-        guard let calendar = fetchOrCreateCalendar() else {
-            print("Failed to get or create Bear calendar")
-            completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
-            return
-        }
-
-        calendarIdentifier = calendar.calendarIdentifier
-
+    func sync(todos: [TodoItem], noteModifiedDates: [String: Date?]) async -> SyncResult {
+        guard isAuthorized else { return SyncResult(completedKeys: [], uncompletedKeys: []) }
+        let store = EKEventStore()
+        guard let calendar = fetchOrCreateCalendar(using: store) else { return SyncResult(completedKeys: [], uncompletedKeys: []) }
         let todoMap = Dictionary(uniqueKeysWithValues: todos.map { (syncKey(for: $0), $0) })
-        let predicate = eventStore.predicateForReminders(in: [calendar])
+        let prefix = notesPrefix
 
-        eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
-            Task { @MainActor in
-                guard let self = self else {
-                    completion?(SyncResult(completedKeys: [], uncompletedKeys: []))
-                    return
-                }
+        return await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: store.predicateForReminders(in: [calendar])) { reminders in
+                let existing = reminders ?? []
+                var toSave: [EKReminder] = []; var completed = Set<String>(); var uncompleted = Set<String>()
 
-                let existingReminders = reminders ?? []
-                var remindersToSave: [EKReminder] = []
-                var completedKeys: Set<String> = []
-                var uncompletedKeys: Set<String> = []
-
-                for reminder in existingReminders {
-                    guard let key = self.parseSyncKey(from: reminder.notes) else { continue }
-
+                for r in existing {
+                    guard let notes = r.notes, let range = notes.range(of: prefix), range.upperBound < notes.endIndex,
+                          let key = Optional.some(String(notes[range.upperBound...])) else { continue }
                     if let todo = todoMap[key] {
-                        // Derive noteId from sync key for timestamp lookup
-                        let noteId = key.components(separatedBy: "|").first ?? ""
-                        let bearModDate = noteModifiedDates[noteId] ?? nil
-
-                        if !todo.isCompleted && !reminder.isCompleted {
-                            // Both unchecked: update title if changed
-                            if reminder.title != todo.text {
-                                reminder.title = todo.text
-                                remindersToSave.append(reminder)
-                            }
-                        } else if !todo.isCompleted && reminder.isCompleted {
-                            // Conflict: Bear unchecked, Reminder completed
-                            if self.reminderIsNewer(reminder: reminder, bearModified: bearModDate) {
-                                completedKeys.insert(key)
-                            } else {
-                                reminder.isCompleted = false
-                                remindersToSave.append(reminder)
-                            }
-                        } else if todo.isCompleted && !reminder.isCompleted {
-                            // Conflict: Bear checked, Reminder uncompleted
-                            if self.reminderIsNewer(reminder: reminder, bearModified: bearModDate) {
-                                uncompletedKeys.insert(key)
-                            } else {
-                                reminder.isCompleted = true
-                                remindersToSave.append(reminder)
-                            }
+                        let bearMod = noteModifiedDates[key.components(separatedBy: "|").first ?? ""] ?? nil
+                        if !todo.isCompleted && !r.isCompleted {
+                            if r.title != todo.text { r.title = todo.text; toSave.append(r) }
+                        } else if !todo.isCompleted && r.isCompleted {
+                            if (r.lastModifiedDate ?? .distantPast) > (bearMod ?? .distantPast) { completed.insert(key) }
+                            else { r.isCompleted = false; toSave.append(r) }
+                        } else if todo.isCompleted && !r.isCompleted {
+                            if (r.lastModifiedDate ?? .distantPast) > (bearMod ?? .distantPast) { uncompleted.insert(key) }
+                            else { r.isCompleted = true; toSave.append(r) }
                         }
-                        // both completed: nothing to do
-                    } else {
-                        // Todo deleted from Bear
-                        if !reminder.isCompleted {
-                            reminder.isCompleted = true
-                            remindersToSave.append(reminder)
+                    } else if !r.isCompleted { r.isCompleted = true; toSave.append(r) }
+                }
+
+                let existingKeys = Set(existing.compactMap { r -> String? in
+                    guard let notes = r.notes, let range = notes.range(of: prefix), range.upperBound < notes.endIndex
+                    else { return nil }
+                    return String(notes[range.upperBound...])
+                })
+
+                for todo in todos where !todo.isCompleted && !existingKeys.contains("\(todo.noteId)|\(todo.lineNumber)") {
+                    let r = EKReminder(eventStore: store); r.title = todo.text
+                    r.notes = prefix + "\(todo.noteId)|\(todo.lineNumber)"
+                    r.calendar = calendar; r.isCompleted = false
+                    let g = Calendar(identifier: .gregorian)
+                    if let t = g.date(byAdding: .day, value: 1, to: Date()) {
+                        var c = g.dateComponents([.year, .month, .day], from: t); c.calendar = g
+                        r.startDateComponents = c; r.dueDateComponents = c
+                    }
+                    toSave.append(r)
+                }
+
+                for r in toSave { do { try store.save(r, commit: r.calendarItemIdentifier.isEmpty) } catch { print("Save: \(error)") } }
+                continuation.resume(returning: SyncResult(completedKeys: completed, uncompletedKeys: uncompleted))
+            }
+        }
+    }
+
+    func fetchUncompletedReminders() async -> [SystemReminderItem] {
+        guard isAuthorized else { return [] }
+        let store = EKEventStore()
+        let calendars = store.calendars(for: .reminder).filter { $0.title != calendarTitle }
+        guard !calendars.isEmpty else { return [] }
+        let prefix = notesPrefix
+
+        return await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: store.predicateForReminders(in: calendars)) { reminders in
+                let todayC = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+                let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
+                let tomorrowC = Calendar.current.dateComponents([.year, .month, .day], from: tomorrow)
+
+                var overdue: [SystemReminderItem] = [], today: [SystemReminderItem] = []
+                var tomorrowItems: [SystemReminderItem] = [], scheduled: [SystemReminderItem] = [], unscheduled: [SystemReminderItem] = []
+
+                for r in (reminders ?? []) {
+                    guard !r.isCompleted else { continue }
+                    if let notes = r.notes, notes.hasPrefix(prefix) { continue }
+                    guard let title = r.title, !title.isEmpty else { continue }
+
+                    let cat: ReminderDueCategory
+                    if let comps = r.dueDateComponents, let y = comps.year, let m = comps.month, let d = comps.day {
+                        if y == todayC.year, m == todayC.month, d == todayC.day { cat = .today }
+                        else if y == tomorrowC.year, m == tomorrowC.month, d == tomorrowC.day { cat = .tomorrow }
+                        else {
+                            let cal = Calendar.current
+                            if let due = cal.date(from: comps), due < cal.startOfDay(for: Date()) { cat = .overdue }
+                            else { cat = .scheduled }
                         }
+                    } else { cat = .unscheduled }
+
+                    let due = r.dueDateComponents.flatMap { Calendar.current.date(from: $0) }
+                    let item = SystemReminderItem(id: r.calendarItemIdentifier, title: title, dueCategory: cat,
+                                                  reminderIdentifier: r.calendarItemIdentifier, dueDate: due)
+                    switch cat {
+                    case .overdue: overdue.append(item)
+                    case .today: today.append(item)
+                    case .tomorrow: tomorrowItems.append(item)
+                    case .scheduled: scheduled.append(item)
+                    case .unscheduled: unscheduled.append(item)
                     }
                 }
 
-                let existingKeys = Set(existingReminders.compactMap { self.parseSyncKey(from: $0.notes) })
-                let newTodos = todos.filter { !$0.isCompleted && !existingKeys.contains(self.syncKey(for: $0)) }
-
-                for todo in newTodos {
-                    let reminder = EKReminder(eventStore: self.eventStore)
-                    reminder.title = todo.text
-                    reminder.notes = self.notesString(for: todo)
-                    reminder.calendar = calendar
-                    reminder.isCompleted = false
-
-                    let gregorian = Calendar(identifier: .gregorian)
-                    if let tomorrow = gregorian.date(byAdding: .day, value: 1, to: Date()) {
-                        var components = gregorian.dateComponents([.year, .month, .day], from: tomorrow)
-                        components.calendar = gregorian
-                        reminder.startDateComponents = components
-                        reminder.dueDateComponents = components
-                    }
-
-                    remindersToSave.append(reminder)
+                func sort(_ items: [SystemReminderItem]) -> [SystemReminderItem] {
+                    items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
                 }
-
-                let newReminders = remindersToSave.filter { $0.calendarItemIdentifier.isEmpty }
-                let modifiedReminders = remindersToSave.filter { !$0.calendarItemIdentifier.isEmpty }
-
-                for reminder in newReminders {
-                    do {
-                        try self.eventStore.save(reminder, commit: true)
-                    } catch {
-                        print("Failed to save new reminder: \(error)")
-                    }
-                }
-
-                for reminder in modifiedReminders {
-                    do {
-                        try self.eventStore.save(reminder, commit: false)
-                    } catch {
-                        print("Failed to save existing reminder: \(error)")
-                    }
-                }
-
-                if !modifiedReminders.isEmpty {
-                    do {
-                        try self.eventStore.commit()
-                    } catch {
-                        print("Failed to commit reminders: \(error)")
-                    }
-                }
-
-                completion?(SyncResult(completedKeys: completedKeys, uncompletedKeys: uncompletedKeys))
+                continuation.resume(returning: sort(overdue) + sort(today) + sort(tomorrowItems) + sort(scheduled) + sort(unscheduled))
             }
         }
     }
 
-    private func reminderIsNewer(reminder: EKReminder, bearModified: Date?) -> Bool {
-        let reminderDate = reminder.lastModifiedDate ?? Date.distantPast
-        let bearDate = bearModified ?? Date.distantPast
-        return reminderDate > bearDate
-    }
-
-    func fetchUncompletedReminders(completion: @escaping ([SystemReminderItem]) -> Void) {
-        let freshStore = EKEventStore()
-
-        let status = EKEventStore.authorizationStatus(for: .reminder)
-        guard isAuthorizedStatus(status) else {
-            completion([])
-            return
-        }
-
-        let allCalendars = freshStore.calendars(for: .reminder)
-        let filteredCalendars = allCalendars.filter { $0.title != calendarTitle }
-
-        guard !filteredCalendars.isEmpty else {
-            completion([])
-            return
-        }
-
-        let predicate = freshStore.predicateForReminders(in: filteredCalendars)
-        freshStore.fetchReminders(matching: predicate) { [weak self] reminders in
-            guard let self = self else {
-                completion([])
-                return
-            }
-
-            let todayComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-            let tomorrowDate = Calendar.current.date(
-                byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
-            let tomorrowComponents = Calendar.current.dateComponents([.year, .month, .day], from: tomorrowDate)
-
-            var overdueItems: [SystemReminderItem] = []
-            var todayItems: [SystemReminderItem] = []
-            var tomorrowItems: [SystemReminderItem] = []
-            var scheduledItems: [SystemReminderItem] = []
-            var unscheduledItems: [SystemReminderItem] = []
-
-            for reminder in (reminders ?? []) {
-                guard !reminder.isCompleted else { continue }
-
-                if let notes = reminder.notes, notes.hasPrefix(self.notesPrefix) {
-                    continue
-                }
-
-                let title = reminder.title ?? ""
-                guard !title.isEmpty else { continue }
-
-                let identifier = reminder.calendarItemIdentifier
-                let category = self.categorizeDueDate(
-                    from: reminder.dueDateComponents, today: todayComponents, tomorrow: tomorrowComponents)
-                let dueDate: Date? = {
-                    if let comps = reminder.dueDateComponents {
-                        return Calendar.current.date(from: comps)
-                    }
-                    return nil
-                }()
-                let item = SystemReminderItem(
-                    id: identifier, title: title, dueCategory: category,
-                    reminderIdentifier: identifier, dueDate: dueDate)
-
-                switch category {
-                case .overdue: overdueItems.append(item)
-                case .today: todayItems.append(item)
-                case .tomorrow: tomorrowItems.append(item)
-                case .scheduled: scheduledItems.append(item)
-                case .unscheduled: unscheduledItems.append(item)
-                }
-            }
-
-            let sortBlock: ([SystemReminderItem]) -> [SystemReminderItem] = { items in
-                items.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
-            }
-
-            let allItems =
-                sortBlock(overdueItems) + sortBlock(todayItems) + sortBlock(tomorrowItems)
-                + sortBlock(scheduledItems) + sortBlock(unscheduledItems)
-
-            Task { @MainActor in
-                completion(allItems)
-            }
-        }
-    }
-
-    func toggleReminderCompletion(identifier: String, completion: @escaping (Bool) -> Void) {
-        guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder else {
-            Task { @MainActor in completion(false) }
-            return
-        }
-
-        reminder.isCompleted = true
-        do {
-            try eventStore.save(reminder, commit: true)
-            Task { @MainActor in completion(true) }
-        } catch {
-            print("Failed to toggle reminder completion: \(error)")
-            Task { @MainActor in completion(false) }
-        }
+    func toggleReminderCompletion(identifier: String) async throws {
+        let store = EKEventStore()
+        guard let r = store.calendarItem(withIdentifier: identifier) as? EKReminder else { return }
+        r.isCompleted = true; try store.save(r, commit: true)
     }
 
     func openReminderInApp(identifier: String) {
-        guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder,
-            let title = reminder.title
-        else { return }
-
-        let escapedTitle = title.replacingOccurrences(of: "\"", with: "\\\"")
-        let script = """
-            tell application "Reminders"
-                repeat with lst in lists
-                    repeat with rmnd in (reminders of lst whose name is "\(escapedTitle)")
-                        return id of rmnd
-                    end repeat
-                end repeat
-                return ""
-            end tell
-            """
-
-        let appleScript = NSAppleScript(source: script)
-        var error: NSDictionary?
-        let result = appleScript?.executeAndReturnError(&error)
-
-        if let err = error {
-            print("AppleScript error: \(err)")
-            fallbackOpenReminders()
-            return
-        }
-
-        guard let rawID = result?.stringValue, !rawID.isEmpty else {
-            fallbackOpenReminders()
-            return
-        }
-
-        // x-apple-reminder://UUID → x-apple-reminderkit://REMCDReminder/UUID
-        let deepLink = rawID.replacingOccurrences(
-            of: "x-apple-reminder://",
-            with: "x-apple-reminderkit://REMCDReminder/"
-        )
-
-        if let url = URL(string: deepLink) {
-            NSWorkspace.shared.open(url)
-        } else {
-            fallbackOpenReminders()
-        }
+        let store = EKEventStore()
+        guard let r = store.calendarItem(withIdentifier: identifier) as? EKReminder, let title = r.title
+        else { fallbackOpen(); return }
+        let esc = title.replacingOccurrences(of: "\"", with: "\\\"")
+        let s = NSAppleScript(source: "tell application \"Reminders\"\nrepeat with lst in lists\nrepeat with rmnd in (reminders of lst whose name is \"\(esc)\")\nreturn id of rmnd\nend repeat\nend repeat\nreturn \"\"\nend tell")
+        var err: NSDictionary?
+        let rawID = s?.executeAndReturnError(&err).stringValue ?? ""
+        guard !rawID.isEmpty, err == nil else { fallbackOpen(); return }
+        let link = rawID.replacingOccurrences(of: "x-apple-reminder://", with: "x-apple-reminderkit://REMCDReminder/")
+        if let url = URL(string: link) { NSWorkspace.shared.open(url) } else { fallbackOpen() }
     }
 
-    private func fallbackOpenReminders() {
-        if let url = URL(string: "x-apple-reminderkit://") {
-            NSWorkspace.shared.open(url)
+    private func fallbackOpen() { if let url = URL(string: "x-apple-reminderkit://") { NSWorkspace.shared.open(url) } }
+
+    private func fetchOrCreateCalendar(using store: EKEventStore) -> EKCalendar? {
+        if let id = calendarIdentifier, let cal = store.calendar(withIdentifier: id), cal.allowsContentModifications { return cal }
+        if let cal = store.calendars(for: .reminder).first(where: { $0.title == calendarTitle && $0.allowsContentModifications }) {
+            calendarIdentifier = cal.calendarIdentifier; return cal
         }
+        guard let src = store.defaultCalendarForNewReminders()?.source ?? store.sources.first(where: { $0.sourceType == .local }) else { return nil }
+        let cal = EKCalendar(for: .reminder, eventStore: store); cal.title = calendarTitle; cal.source = src
+        cal.cgColor = NSColor.systemOrange.cgColor
+        do { try store.saveCalendar(cal, commit: true); calendarIdentifier = cal.calendarIdentifier; return cal }
+        catch { print("Calendar create: \(error)"); return nil }
     }
 
-    private func categorizeDueDate(from components: DateComponents?, today: DateComponents, tomorrow: DateComponents)
-        -> ReminderDueCategory
-    {
-        guard let components = components,
-            let year = components.year,
-            let month = components.month,
-            let day = components.day
-        else {
-            return .unscheduled
-        }
-
-        if year == today.year && month == today.month && day == today.day {
-            return .today
-        }
-        if year == tomorrow.year && month == tomorrow.month && day == tomorrow.day {
-            return .tomorrow
-        }
-
-        let cal = Calendar.current
-        let todayStart = cal.startOfDay(for: Date())
-        if let dueDate = cal.date(from: components), dueDate < todayStart {
-            return .overdue
-        }
-
-        return .scheduled
-    }
-
-    func isAuthorizedStatus(_ status: EKAuthorizationStatus) -> Bool {
-        if status == .authorized { return true }
-        if #available(macOS 14.0, *) {
-            return status == .fullAccess
-        }
-        return false
-    }
-
-    private func fetchOrCreateCalendar() -> EKCalendar? {
-        if let identifier = calendarIdentifier,
-            let calendar = eventStore.calendar(withIdentifier: identifier),
-            calendar.allowsContentModifications
-        {
-            return calendar
-        }
-
-        let existing = eventStore.calendars(for: .reminder).first {
-            $0.title == calendarTitle && $0.allowsContentModifications
-        }
-        if let existing = existing {
-            calendarIdentifier = existing.calendarIdentifier
-            return existing
-        }
-
-        guard let source = eventStore.defaultCalendarForNewReminders()?.source else {
-            let localSource = eventStore.sources.first { $0.sourceType == .local }
-            guard let source = localSource else { return nil }
-            return createCalendar(using: source)
-        }
-
-        return createCalendar(using: source)
-    }
-
-    private func createCalendar(using source: EKSource) -> EKCalendar? {
-        let calendar = EKCalendar(for: .reminder, eventStore: eventStore)
-        calendar.title = calendarTitle
-        calendar.source = source
-        calendar.cgColor = NSColor.systemOrange.cgColor
-
-        do {
-            try eventStore.saveCalendar(calendar, commit: true)
-            calendarIdentifier = calendar.calendarIdentifier
-            return calendar
-        } catch {
-            print("Failed to create Bear calendar: \(error)")
-            return nil
-        }
-    }
-
-    private func syncKey(for todo: TodoItem) -> String {
-        return todo.noteId + "|" + String(todo.lineNumber)
-    }
-
-    private func notesString(for todo: TodoItem) -> String {
-        return notesPrefix + syncKey(for: todo)
-    }
-
-    private func parseSyncKey(from notes: String?) -> String? {
-        guard let notes = notes else { return nil }
-        guard let range = notes.range(of: notesPrefix) else { return nil }
-        let startIndex = range.upperBound
-        guard startIndex < notes.endIndex else { return nil }
-        return String(notes[startIndex...])
-    }
+    private func syncKey(for todo: TodoItem) -> String { "\(todo.noteId)|\(todo.lineNumber)" }
 }

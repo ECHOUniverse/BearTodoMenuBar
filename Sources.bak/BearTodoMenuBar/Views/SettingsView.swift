@@ -71,12 +71,12 @@ struct SettingsView: View {
         let validValues = [0, 1, 3, 5, 7]
         let idx = Double(validValues.firstIndex(of: storedInterval) ?? 0)
 
-        _draftReminderSync = State(initialValue: KeychainStorage.shared.isReminderSyncEnabled)
-        _draftLaunchAtLogin = State(initialValue: KeychainStorage.shared.isLaunchAtLoginEnabled)
-        _draftCompletedSection = State(initialValue: KeychainStorage.shared.isCompletedSectionVisible)
-        _draftSyncIntervalIndex = State(initialValue: idx)
-        _draftLanguage = State(initialValue: L10n.shared.language)
-        _draftMonitorMethod = State(initialValue: KeychainStorage.shared.bearMonitorMethod)
+        self.draftReminderSync = KeychainStorage.shared.isReminderSyncEnabled
+        self.draftLaunchAtLogin = KeychainStorage.shared.isLaunchAtLoginEnabled
+        self.draftCompletedSection = KeychainStorage.shared.isCompletedSectionVisible
+        self.draftSyncIntervalIndex = idx
+        self.draftLanguage = L10n.shared.language
+        self.draftMonitorMethod = KeychainStorage.shared.bearMonitorMethod
     }
 
     var body: some View {
@@ -170,181 +170,144 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var tabSwitcher: some View {
-        if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(SettingsTab.allCases, id: \.self) { tab in
-                        let label = HStack(spacing: 6) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 13, weight: .medium))
-                            Text(tab.title)
-                                .font(.callout)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-
-                        if selectedTab == tab {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    selectedTab = tab
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffect(.regular.interactive(), in: Capsule())
-                            .glassEffectID(tab.rawValue, in: tabNamespace)
-                        } else {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    selectedTab = tab
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffectID(tab.rawValue, in: tabNamespace)
-                        }
-                    }
-                }
-            }
-            .padding(4)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-                    )
-            )
-            .frame(maxWidth: .infinity)
-        } else {
-            Picker("", selection: $selectedTab) {
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
                 ForEach(SettingsTab.allCases, id: \.self) { tab in
-                    HStack(spacing: 6) {
+                    let label = HStack(spacing: 6) {
                         Image(systemName: tab.icon)
                             .font(.system(size: 13, weight: .medium))
                         Text(tab.title)
+                            .font(.callout)
+                            .fontWeight(.medium)
                     }
-                    .tag(tab)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+
+                    if selectedTab == tab {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                selectedTab = tab
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .glassEffectID(tab.rawValue, in: tabNamespace)
+                    } else {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                selectedTab = tab
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffectID(tab.rawValue, in: tabNamespace)
+                    }
                 }
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 320)
-            .frame(maxWidth: .infinity)
         }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+        )
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Language Switcher
 
     @ViewBuilder
     private var languageSwitcher: some View {
-        if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(Language.allCases, id: \.self) { lang in
-                        let label = Text(lang.displayName)
-                            .font(.callout)
-                            .fontWeight(.medium)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(Language.allCases, id: \.self) { lang in
+                    let label = Text(lang.displayName)
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
 
-                        if draftLanguage == lang {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    draftLanguage = lang
-                                    l10n.language = lang
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffect(.regular.interactive(), in: Capsule())
-                            .glassEffectID(lang.rawValue, in: languageNamespace)
-                        } else {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    draftLanguage = lang
-                                    l10n.language = lang
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffectID(lang.rawValue, in: languageNamespace)
-                        }
+                    if draftLanguage == lang {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                draftLanguage = lang
+                                l10n.language = lang
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .glassEffectID(lang.rawValue, in: languageNamespace)
+                    } else {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                draftLanguage = lang
+                                l10n.language = lang
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffectID(lang.rawValue, in: languageNamespace)
                     }
                 }
             }
-            .padding(4)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-                    )
-            )
-            .frame(maxWidth: .infinity)
-        } else {
-            Picker("", selection: $draftLanguage) {
-                ForEach(Language.allCases, id: \.self) { lang in
-                    Text(lang.displayName).tag(lang)
-                }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: draftLanguage) { lang in
-                l10n.language = lang
-            }
         }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+        )
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Monitor Method Switcher
 
     @ViewBuilder
     private var monitorMethodSwitcher: some View {
-        if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(BearMonitorMethod.allCases, id: \.self) { method in
-                        let label = Text(method.displayName)
-                            .font(.callout)
-                            .fontWeight(.medium)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(BearMonitorMethod.allCases, id: \.self) { method in
+                    let label = Text(method.displayName)
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
 
-                        if draftMonitorMethod == method {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    draftMonitorMethod = method
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffect(.regular.interactive(), in: Capsule())
-                            .glassEffectID(method.rawValue, in: monitorMethodNamespace)
-                        } else {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    draftMonitorMethod = method
-                                }
-                            } label: { label }
-                            .buttonStyle(.plain)
-                            .glassEffectID(method.rawValue, in: monitorMethodNamespace)
-                        }
+                    if draftMonitorMethod == method {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                draftMonitorMethod = method
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .glassEffectID(method.rawValue, in: monitorMethodNamespace)
+                    } else {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                draftMonitorMethod = method
+                            }
+                        } label: { label }
+                        .buttonStyle(.plain)
+                        .glassEffectID(method.rawValue, in: monitorMethodNamespace)
                     }
                 }
             }
-            .padding(4)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-                    )
-            )
-            .frame(maxWidth: .infinity)
-        } else {
-            Picker("", selection: $draftMonitorMethod) {
-                ForEach(BearMonitorMethod.allCases, id: \.self) { method in
-                    Text(method.displayName).tag(method)
-                }
-            }
-            .pickerStyle(.segmented)
         }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+        )
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Tab Content

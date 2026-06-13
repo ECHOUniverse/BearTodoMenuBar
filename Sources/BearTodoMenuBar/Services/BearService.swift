@@ -1,157 +1,49 @@
 import Foundation
-import AppKit
 
-enum BearServiceError: Error {
-    case fetchFailed(String)
-    case parseFailed
-}
-
-protocol BearServiceProtocol {
-    func fetchAllUncheckedTodos(completion: @escaping (Result<[NoteTodos], BearServiceError>) -> Void)
-    func openNote(id: String)
-}
-
-class BearService: BearServiceProtocol {
+actor BearService {
     static let shared = BearService()
-
     private let cliPath = "/Applications/Bear.app/Contents/MacOS/bearcli"
 
-    func fetchAllUncheckedTodos(completion: @escaping (Result<[NoteTodos], BearServiceError>) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async { [self] in
-            guard FileManager.default.isExecutableFile(atPath: cliPath) else {
-                DispatchQueue.main.async {
-                    completion(.failure(.fetchFailed("Bear CLI not found")))
-                }
-                return
+    func fetchAllTodos() async throws -> [NoteTodos] {
+        guard FileManager.default.isExecutableFile(atPath: cliPath) else { throw BearServiceError.cliNotFound }
+        let json = try await runCLI(["search", "--query", "@todo", "--format", "json", "--fields", "id,title,content,modified"])
+        guard !json.isEmpty else { return [] }
+        struct CLINote: Decodable { let id: String; let title: String; let content: String; let modified: Date? }
+        guard let data = json.data(using: .utf8) else { throw BearServiceError.parseFailed }
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([CLINote].self, from: data).compactMap { note in
+            let todos = TodoParser.parseAllTodos(from: note.content).map {
+                TodoItem(text: $0.text, noteId: note.id, noteTitle: note.title, lineNumber: $0.lineNumber, isCompleted: $0.isCompleted)
             }
-
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: cliPath)
-            process.arguments = ["search", "--query", "@todo", "--format", "json", "--fields", "id,title,content,modified"]
-
-            let outputPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = Pipe()
-
-            do {
-                try process.run()
-                process.waitUntilExit()
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(.fetchFailed(error.localizedDescription)))
-                }
-                return
-            }
-
-            guard process.terminationStatus == 0 else {
-                DispatchQueue.main.async {
-                    completion(.failure(.fetchFailed("bearcli exited with code \(process.terminationStatus)")))
-                }
-                return
-            }
-
-            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-
-            guard !outputData.isEmpty else {
-                DispatchQueue.main.async {
-                    completion(.success([]))
-                }
-                return
-            }
-
-            struct CLINote: Decodable {
-                let id: String
-                let title: String
-                let content: String
-                let modified: Date?
-            }
-
-            do {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let notes = try decoder.decode([CLINote].self, from: outputData)
-                let noteTodosList = notes.compactMap { note -> NoteTodos? in
-                    let allTodos = TodoParser.parseAllTodos(from: note.content)
-                    guard !allTodos.isEmpty else { return nil }
-                    let todos = allTodos.map { line in
-                        TodoItem(
-                            text: line.text,
-                            noteId: note.id,
-                            noteTitle: note.title,
-                            lineNumber: line.lineNumber,
-                            isCompleted: line.isCompleted
-                        )
-                    }
-                    return NoteTodos(id: note.id, title: note.title, todos: todos, modified: note.modified)
-                }
-
-                DispatchQueue.main.async {
-                    completion(.success(noteTodosList))
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(.parseFailed))
-                }
-            }
+            return todos.isEmpty ? nil : NoteTodos(id: note.id, title: note.title, todos: todos, modified: note.modified)
         }
     }
 
-    func completeTodoInBear(todo: TodoItem, completion: @escaping (Bool) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async { [self] in
-            let escapedText = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
-            let oldLine = "- [ ] \(escapedText)"
-            let newLine = "- [x] \(escapedText)"
-
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: cliPath)
-            process.arguments = ["edit", todo.noteId, "--find", oldLine, "--replace", newLine, "--all"]
-
-            let outputPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = Pipe()
-
-            do {
-                try process.run()
-                process.waitUntilExit()
-            } catch {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-
-            DispatchQueue.main.async { completion(process.terminationStatus == 0) }
-        }
+    func completeTodo(_ todo: TodoItem) async throws {
+        let escaped = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
+        _ = try await runCLI(["edit", todo.noteId, "--find", "- [ ] \(escaped)", "--replace", "- [x] \(escaped)", "--all"])
     }
 
-    func uncompleteTodoInBear(todo: TodoItem, completion: @escaping (Bool) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async { [self] in
-            let escapedText = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
-            let oldLine = "- [x] \(escapedText)"
-            let newLine = "- [ ] \(escapedText)"
-
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: cliPath)
-            process.arguments = ["edit", todo.noteId, "--find", oldLine, "--replace", newLine, "--all"]
-
-            let outputPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = Pipe()
-
-            do {
-                try process.run()
-                process.waitUntilExit()
-            } catch {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-
-            DispatchQueue.main.async { completion(process.terminationStatus == 0) }
-        }
+    func uncompleteTodo(_ todo: TodoItem) async throws {
+        let escaped = todo.text.replacingOccurrences(of: "\\", with: "\\\\")
+        _ = try await runCLI(["edit", todo.noteId, "--find", "- [x] \(escaped)", "--replace", "- [ ] \(escaped)", "--all"])
     }
 
-    func openNote(id: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: cliPath)
-        process.arguments = ["open", id]
-        try? process.run()
+    nonisolated func openNote(id: String) {
+        let p = Process(); p.executableURL = URL(fileURLWithPath: cliPath); p.arguments = ["open", id]; try? p.run()
+    }
+
+    private func runCLI(_ args: [String]) async throws -> String {
+        try await withCheckedThrowingContinuation { c in
+            let p = Process(); p.executableURL = URL(fileURLWithPath: cliPath); p.arguments = args
+            let out = Pipe(); p.standardOutput = out; p.standardError = Pipe()
+            p.terminationHandler = { proc in
+                let s = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                proc.terminationStatus == 0 ? c.resume(returning: s) : c.resume(throwing: BearServiceError.cliFailed(s))
+            }
+            do { try p.run() } catch { c.resume(throwing: BearServiceError.cliFailed(error.localizedDescription)) }
+        }
     }
 }
+
+enum BearServiceError: Error { case cliNotFound, cliFailed(String), parseFailed }

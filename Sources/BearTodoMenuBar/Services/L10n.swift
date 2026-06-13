@@ -1,394 +1,106 @@
-import Combine
-import SwiftUI
+import Foundation
 
-extension Notification.Name {
-    static let appLanguageDidChange = Notification.Name("appLanguageDidChange")
-}
-
-enum Language: String, CaseIterable, Codable {
-    case auto
-    case simplifiedChinese
-    case english
-
-    var displayName: String {
-        switch self {
-        case .auto: return "自动（跟随系统）"
-        case .simplifiedChinese: return "简体中文"
-        case .english: return "English"
-        }
-    }
-}
-
-enum BearMonitorMethod: String, CaseIterable, Codable {
-    case fileWatcher
-    case polling
-
-    var displayName: String {
-        switch self {
-        case .fileWatcher: return "文件监控"
-        case .polling: return "Bear 轮询"
-        }
-    }
-}
-
-final class L10n: ObservableObject {
+@Observable @MainActor
+final class L10n {
     static let shared = L10n()
 
-    @AppStorage("app_language") var language: Language = .auto
-
-    var resolvedLanguage: Language {
-        switch language {
-        case .auto:
-            return Locale.preferredLanguages.first?.hasPrefix("zh") == true ? .simplifiedChinese : .english
-        case .simplifiedChinese, .english:
-            return language
+    private init() {
+        NotificationCenter.default.addObserver(forName: .appLanguageDidChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?._update() }
         }
     }
 
-    private var cancellable: AnyCancellable?
+    private func _update() {}
+    private var storage: KeychainStorage { KeychainStorage.shared }
 
-    init() {
-        cancellable = NotificationCenter.default
-            .publisher(for: UserDefaults.didChangeNotification)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-                NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
-            }
+    var language: Language {
+        get { storage.language }
+        set { storage.language = newValue }
     }
 
-    private enum StringKey {
-        case settings
-        case settingsDescription
-        case systemReminders
-        case enableSync
-        case databaseAccess
-        case authorized
-        case notAuthorized
-        case accessGranted
-        case accessNotGranted
-        case reauthorize
-        case authorizeAccess
-        case reminderAccessDenied
-        case authorizePrompt
-        case authorizeMessage
-        case cannotOpenPanel
-        case saveAuthFailed
-        case language
-        case languageAuto
-        case languageChinese
-        case languageEnglish
-        case reminderAccessAllowed
-        case reminderAccessDeniedText
-        case reminderAccessRestricted
-        case reminderAccessPending
-        case reminderAccessUnknown
-        case reminderAccessGrantedDesc
-        case reminderAccessDeniedDesc
-        case reminderAccessRestrictedDesc
-        case reminderAccessPendingDesc
-        case refreshing
-        case lastUpdate
-        case refreshNow
-        case noDatabaseAuth
-        case noTodos
-        case moreItems
-        case openInBear
-        case settingsMenu
-        case quit
-        case remindersSection
-        case todaySection
-        case tomorrowSection
-        case scheduledSection
-        case overdueSection
-        case unscheduledSection
-        case pauseSync
-        case resumeSync
-        case completedSection
-        case launchAtLogin
-        case launchAtLoginToggle
-        case launchAtLoginDescription
-        case syncInterval
-        case syncIntervalTitle
-        case syncIntervalImmediate
-        case syncIntervalValue
-        case showCompletedSection
-        case showCompletedSectionDescription
-        case allBearTodosCompleted
-        case save
-        case cancel
-        case generalSettings
-        case syncIntegration
-        case bearMonitorMethod
-        case bearMonitorFileWatcher
-        case bearMonitorPolling
-        case bearMonitorFileWatcherDesc
-        case bearMonitorPollingDesc
-        case about
-        case appVersion
-        case checkForUpdates
-        case checking
-        case upToDate
-        case newVersionAvailable
-        case updateFailed
-        case openDownloadPage
+    var resolvedLanguage: Language { language.resolved }
+
+    private func tr(_ key: StringKey) -> String {
+        let table = resolvedLanguage == .simplifiedChinese ? zh : en
+        return table[key] ?? en[key] ?? ""
     }
 
-    private static let zhStrings: [StringKey: String] = [
-        .settings: "设置",
-        .settingsDescription: "配置 Bear 待办同步选项",
-        .systemReminders: "系统提醒事项",
-        .enableSync: "启用同步",
-        .databaseAccess: "数据库访问授权",
-        .authorized: "已授权",
-        .notAuthorized: "未授权",
-        .accessGranted: "已授权访问 Bear 数据库，自动刷新可用。",
-        .accessNotGranted: "未授权访问 Bear 数据库，自动刷新功能不可用。",
-        .reauthorize: "重新授权",
-        .authorizeAccess: "授权访问",
-        .reminderAccessDenied: "无法访问提醒事项，请检查系统权限设置",
-        .authorizePrompt: "授权访问",
-        .authorizeMessage: "请选择 Bear 的 Application Data 目录",
-        .cannotOpenPanel: "无法打开文件选择器",
-        .saveAuthFailed: "保存授权失败",
-        .language: "语言 / Language",
-        .languageAuto: "自动（跟随系统）",
-        .languageChinese: "简体中文",
-        .languageEnglish: "English",
-        .reminderAccessAllowed: "已允许",
-        .reminderAccessDeniedText: "已拒绝",
-        .reminderAccessRestricted: "受限制",
-        .reminderAccessPending: "待授权",
-        .reminderAccessUnknown: "未知",
-        .reminderAccessGrantedDesc: "提醒事项权限已获取，待办将自动同步到系统提醒事项。",
-        .reminderAccessDeniedDesc: "权限已被拒绝，请前往系统设置 → 隐私与安全性 → 提醒事项中开启。",
-        .reminderAccessRestrictedDesc: "权限受限制，无法访问提醒事项。",
-        .reminderAccessPendingDesc: "开启开关后将请求提醒事项权限。",
-        .refreshing: "⏳ 刷新中...",
-        .lastUpdate: "上次更新：%@",
-        .refreshNow: "立即刷新",
-        .noDatabaseAuth: "⚠️ 未授权数据库访问，自动刷新不可用",
-        .noTodos: "暂无待办事项",
-        .moreItems: "更多...（还有 %d 条）",
-        .openInBear: "在 Bear 中打开",
-        .settingsMenu: "设置...",
-        .quit: "退出",
-        .remindersSection: "系统提醒事项",
-        .todaySection: "今天",
-        .tomorrowSection: "明天",
-        .scheduledSection: "已安排",
-        .overdueSection: "已逾期",
-        .unscheduledSection: "未安排",
-        .pauseSync: "暂停同步",
-        .resumeSync: "开始同步",
-        .completedSection: "已完成",
-        .launchAtLogin: "开机启动",
-        .launchAtLoginToggle: "开机时自动启动",
-        .launchAtLoginDescription: "开启后应用将在登录时自动启动",
-        .syncInterval: "同步间隔",
-        .syncIntervalTitle: "同步间隔",
-        .syncIntervalImmediate: "立即同步",
-        .syncIntervalValue: "延迟 %d 秒后同步",
-        .showCompletedSection: "显示已完成事项",
-        .showCompletedSectionDescription: "在菜单栏中显示已完成的待办事项",
-        .allBearTodosCompleted: "已全部完成 ✓",
-        .save: "保存",
-        .cancel: "取消",
-        .generalSettings: "一般设置",
-        .syncIntegration: "同步与集成",
-        .bearMonitorMethod: "Bear 文件监控方式",
-        .bearMonitorFileWatcher: "文件监控",
-        .bearMonitorPolling: "Bear 轮询",
-        .bearMonitorFileWatcherDesc: "通过文件系统监控 Bear 数据库变更，实时刷新。",
-        .bearMonitorPollingDesc: "定时通过 bearcli 检查变更，无需授权数据库访问。",
-        .about: "关于与更新",
-        .appVersion: "版本",
-        .checkForUpdates: "检查更新",
-        .checking: "正在检查...",
-        .upToDate: "已是最新版本",
-        .updateFailed: "检查更新失败",
-        .openDownloadPage: "打开下载页面",
+    private enum StringKey: Hashable { case set, setDesc, sysRem, enSync, auth, notAuth, authAcc, authPrompt, authMsg, lang, remAllow, remDeny, remRestr, remPend, remUnk, remAllowD, remDenyD, remRestrD, remPendD, refresh, refNow, lastUp, noDBAuth, noTodo, setMenu, quit, remSec, today, tomorrow, sch, overdue, unsched, pause, resume, comp, login, loginTog, loginDesc, syncInt, syncImm, syncVal, showComp, showCompD, allDone, save, cancel, general, syncIntg, bearMon, bearFW, bearPoll, bearFWDesc, bearPollDesc, about, appVer, chkUpd, chking, upToDate, updFail, openDL, newVer }
+
+    private let zh: [StringKey: String] = [
+        .set: "设置", .setDesc: "配置 Bear 待办同步选项", .sysRem: "系统提醒事项", .enSync: "启用同步",
+        .auth: "已授权", .notAuth: "未授权", .authAcc: "授权访问", .authPrompt: "授权访问",
+        .authMsg: "请选择 Bear 的 Application Data 目录", .lang: "语言 / Language",
+        .remAllow: "已允许", .remDeny: "已拒绝", .remRestr: "受限制", .remPend: "待授权", .remUnk: "未知",
+        .remAllowD: "提醒事项权限已获取。", .remDenyD: "权限已被拒绝，请前往系统设置开启。",
+        .remRestrD: "权限受限制。", .remPendD: "开启后将请求提醒事项权限。",
+        .refresh: "⏳ 刷新中...", .refNow: "立即刷新", .lastUp: "上次更新：%@",
+        .noDBAuth: "⚠️ 未授权数据库访问", .noTodo: "暂无待办事项", .setMenu: "设置...", .quit: "退出",
+        .remSec: "系统提醒事项", .today: "今天", .tomorrow: "明天", .sch: "已安排", .overdue: "已逾期",
+        .unsched: "未安排", .pause: "暂停同步", .resume: "开始同步", .comp: "已完成",
+        .login: "开机启动", .loginTog: "开机时自动启动", .loginDesc: "开启后应用将在登录时自动启动",
+        .syncInt: "同步间隔", .syncImm: "立即同步", .syncVal: "延迟 %d 秒后同步",
+        .showComp: "显示已完成事项", .showCompD: "在菜单栏中显示已完成的待办事项",
+        .allDone: "已全部完成 ✓", .save: "保存", .cancel: "取消", .general: "一般设置", .syncIntg: "同步与集成",
+        .bearMon: "Bear 文件监控方式", .bearFW: "文件监控", .bearPoll: "Bear 轮询",
+        .bearFWDesc: "通过文件系统监控 Bear 数据库变更。", .bearPollDesc: "定时通过 bearcli 检查变更。",
+        .about: "关于与更新", .appVer: "版本", .chkUpd: "检查更新", .chking: "正在检查...",
+        .upToDate: "已是最新版本", .updFail: "检查更新失败", .openDL: "打开下载页面",
     ]
 
-    private static let enStrings: [StringKey: String] = [
-        .settings: "Settings",
-        .settingsDescription: "Configure Bear Todo sync options",
-        .systemReminders: "System Reminders",
-        .enableSync: "Enable Sync",
-        .databaseAccess: "Database Access Authorization",
-        .authorized: "Authorized",
-        .notAuthorized: "Not Authorized",
-        .accessGranted: "Database access authorized, auto-refresh available.",
-        .accessNotGranted: "Database access not authorized, auto-refresh unavailable.",
-        .reauthorize: "Re-authorize",
-        .authorizeAccess: "Authorize Access",
-        .reminderAccessDenied: "Cannot access Reminders, please check system permission settings",
-        .authorizePrompt: "Authorize Access",
-        .authorizeMessage: "Please select Bear's Application Data directory",
-        .cannotOpenPanel: "Cannot open file chooser",
-        .saveAuthFailed: "Failed to save authorization",
-        .language: "Language",
-        .languageAuto: "Auto (Follow System)",
-        .languageChinese: "简体中文",
-        .languageEnglish: "English",
-        .reminderAccessAllowed: "Allowed",
-        .reminderAccessDeniedText: "Denied",
-        .reminderAccessRestricted: "Restricted",
-        .reminderAccessPending: "Pending",
-        .reminderAccessUnknown: "Unknown",
-        .reminderAccessGrantedDesc: "Reminder access granted, todos will sync to Reminders.",
-        .reminderAccessDeniedDesc:
-            "Permission denied. Go to System Settings → Privacy & Security → Reminders to enable.",
-        .reminderAccessRestrictedDesc: "Access restricted, cannot access Reminders.",
-        .reminderAccessPendingDesc: "Permission will be requested when enabled.",
-        .refreshing: "⏳ Refreshing...",
-        .lastUpdate: "Last updated: %@",
-        .refreshNow: "Refresh Now",
-        .noDatabaseAuth: "⚠️ Database access not authorized, auto-refresh unavailable",
-        .noTodos: "No todo items",
-        .moreItems: "More... (%d remaining)",
-        .openInBear: "Open in Bear",
-        .settingsMenu: "Settings...",
-        .quit: "Quit",
-        .remindersSection: "Reminders",
-        .todaySection: "Today",
-        .tomorrowSection: "Tomorrow",
-        .scheduledSection: "Scheduled",
-        .overdueSection: "Overdue",
-        .unscheduledSection: "Unscheduled",
-        .pauseSync: "Pause Sync",
-        .resumeSync: "Resume Sync",
-        .completedSection: "Completed",
-        .launchAtLogin: "Launch at Login",
-        .launchAtLoginToggle: "Launch at Login",
-        .launchAtLoginDescription: "App will automatically launch when you log in",
-        .syncInterval: "Sync Interval",
-        .syncIntervalTitle: "Sync Interval",
-        .syncIntervalImmediate: "Immediate",
-        .syncIntervalValue: "Sync after %d s",
-        .showCompletedSection: "Show Completed Items",
-        .showCompletedSectionDescription: "Display completed todos in the menu bar",
-        .allBearTodosCompleted: "All completed ✓",
-        .save: "Save",
-        .cancel: "Cancel",
-        .generalSettings: "General",
-        .syncIntegration: "Sync & Integration",
-        .bearMonitorMethod: "Bear Monitor Method",
-        .bearMonitorFileWatcher: "File Watcher",
-        .bearMonitorPolling: "Bear Polling",
-        .bearMonitorFileWatcherDesc: "Monitor Bear database changes via file system for real-time refresh.",
-        .bearMonitorPollingDesc: "Periodically check via bearcli, no database access required.",
-        .about: "About & Updates",
-        .appVersion: "Version",
-        .checkForUpdates: "Check for Updates",
-        .checking: "Checking...",
-        .upToDate: "Up to Date",
-        .updateFailed: "Update Check Failed",
-        .openDownloadPage: "Open Download Page",
+    private let en: [StringKey: String] = [
+        .set: "Settings", .setDesc: "Configure Bear Todo sync options", .sysRem: "System Reminders",
+        .enSync: "Enable Sync", .auth: "Authorized", .notAuth: "Not Authorized", .authAcc: "Authorize Access",
+        .authPrompt: "Authorize Access", .authMsg: "Please select Bear's Application Data directory",
+        .lang: "Language", .remAllow: "Allowed", .remDeny: "Denied", .remRestr: "Restricted",
+        .remPend: "Pending", .remUnk: "Unknown", .remAllowD: "Reminder access granted.",
+        .remDenyD: "Permission denied. Enable in System Settings.", .remRestrD: "Access restricted.",
+        .remPendD: "Permission will be requested when enabled.", .refresh: "⏳ Refreshing...",
+        .refNow: "Refresh Now", .lastUp: "Last updated: %@", .noDBAuth: "⚠️ Database access not authorized",
+        .noTodo: "No todo items", .setMenu: "Settings...", .quit: "Quit", .remSec: "Reminders",
+        .today: "Today", .tomorrow: "Tomorrow", .sch: "Scheduled", .overdue: "Overdue",
+        .unsched: "Unscheduled", .pause: "Pause Sync", .resume: "Resume Sync", .comp: "Completed",
+        .login: "Launch at Login", .loginTog: "Launch at Login",
+        .loginDesc: "App will automatically launch when you log in",
+        .syncInt: "Sync Interval", .syncImm: "Immediate", .syncVal: "Sync after %d s",
+        .showComp: "Show Completed Items", .showCompD: "Display completed todos in the menu bar",
+        .allDone: "All completed ✓", .save: "Save", .cancel: "Cancel", .general: "General",
+        .syncIntg: "Sync & Integration", .bearMon: "Bear Monitor Method", .bearFW: "File Watcher",
+        .bearPoll: "Bear Polling", .bearFWDesc: "Monitor Bear database changes via file system.",
+        .bearPollDesc: "Periodically check via bearcli.", .about: "About & Updates",
+        .appVer: "Version", .chkUpd: "Check for Updates", .chking: "Checking...",
+        .upToDate: "Up to Date", .updFail: "Update Check Failed", .openDL: "Open Download Page",
     ]
 
-    private static func tr(_ key: StringKey) -> String {
-        let table: [StringKey: String]
-        switch shared.resolvedLanguage {
-        case .simplifiedChinese: table = zhStrings
-        case .english: table = enStrings
-        case .auto: table = enStrings
-        }
-        return table[key] ?? enStrings[key] ?? ""
-    }
-
-    static var settings: String { tr(.settings) }
-    static var settingsDescription: String { tr(.settingsDescription) }
-    static var systemReminders: String { tr(.systemReminders) }
-    static var enableSync: String { tr(.enableSync) }
-    static var databaseAccess: String { tr(.databaseAccess) }
-    static var authorized: String { tr(.authorized) }
-    static var notAuthorized: String { tr(.notAuthorized) }
-    static var accessGranted: String { tr(.accessGranted) }
-    static var accessNotGranted: String { tr(.accessNotGranted) }
-    static var reauthorize: String { tr(.reauthorize) }
-    static var authorizeAccess: String { tr(.authorizeAccess) }
-    static var reminderAccessDenied: String { tr(.reminderAccessDenied) }
-    static var authorizePrompt: String { tr(.authorizePrompt) }
-    static var authorizeMessage: String { tr(.authorizeMessage) }
-    static var cannotOpenPanel: String { tr(.cannotOpenPanel) }
-    static var saveAuthFailed: String { tr(.saveAuthFailed) }
-    static var language: String { tr(.language) }
-    static var languageAuto: String { tr(.languageAuto) }
-    static var languageChinese: String { tr(.languageChinese) }
-    static var languageEnglish: String { tr(.languageEnglish) }
-    static var reminderAccessAllowed: String { tr(.reminderAccessAllowed) }
-    static var reminderAccessDeniedText: String { tr(.reminderAccessDeniedText) }
-    static var reminderAccessRestricted: String { tr(.reminderAccessRestricted) }
-    static var reminderAccessPending: String { tr(.reminderAccessPending) }
-    static var reminderAccessUnknown: String { tr(.reminderAccessUnknown) }
-    static var reminderAccessGrantedDesc: String { tr(.reminderAccessGrantedDesc) }
-    static var reminderAccessDeniedDesc: String { tr(.reminderAccessDeniedDesc) }
-    static var reminderAccessRestrictedDesc: String { tr(.reminderAccessRestrictedDesc) }
-    static var reminderAccessPendingDesc: String { tr(.reminderAccessPendingDesc) }
-    static var refreshing: String { tr(.refreshing) }
-    static var refreshNow: String { tr(.refreshNow) }
-    static var noDatabaseAuth: String { tr(.noDatabaseAuth) }
-    static var noTodos: String { tr(.noTodos) }
-    static var openInBear: String { tr(.openInBear) }
-    static var settingsMenu: String { tr(.settingsMenu) }
-    static var quit: String { tr(.quit) }
-    static var remindersSection: String { tr(.remindersSection) }
-    static var todaySection: String { tr(.todaySection) }
-    static var tomorrowSection: String { tr(.tomorrowSection) }
-    static var scheduledSection: String { tr(.scheduledSection) }
-    static var overdueSection: String { tr(.overdueSection) }
-    static var unscheduledSection: String { tr(.unscheduledSection) }
-    static var pauseSync: String { tr(.pauseSync) }
-    static var resumeSync: String { tr(.resumeSync) }
-    static var completedSection: String { tr(.completedSection) }
-    static var launchAtLogin: String { tr(.launchAtLogin) }
-    static var launchAtLoginToggle: String { tr(.launchAtLoginToggle) }
-    static var launchAtLoginDescription: String { tr(.launchAtLoginDescription) }
-    static var syncInterval: String { tr(.syncInterval) }
-
-    static func syncIntervalDescription(_ seconds: Int) -> String {
-        if seconds == 0 {
-            return tr(.syncIntervalImmediate)
-        }
-        return String(format: tr(.syncIntervalValue), seconds)
-    }
-
-    static func newVersionAvailable(_ version: String) -> String {
-        String(format: tr(.newVersionAvailable), version)
-    }
-
-    static var showCompletedSection: String { tr(.showCompletedSection) }
-    static var showCompletedSectionDescription: String { tr(.showCompletedSectionDescription) }
-    static var allBearTodosCompleted: String { tr(.allBearTodosCompleted) }
-    static var save: String { tr(.save) }
-    static var cancel: String { tr(.cancel) }
-    static var generalSettings: String { tr(.generalSettings) }
-    static var syncIntegration: String { tr(.syncIntegration) }
-    static var bearMonitorMethod: String { tr(.bearMonitorMethod) }
-    static var bearMonitorFileWatcher: String { tr(.bearMonitorFileWatcher) }
-    static var bearMonitorPolling: String { tr(.bearMonitorPolling) }
-    static var bearMonitorFileWatcherDesc: String { tr(.bearMonitorFileWatcherDesc) }
-    static var bearMonitorPollingDesc: String { tr(.bearMonitorPollingDesc) }
-    static var about: String { tr(.about) }
-    static var appVersion: String { tr(.appVersion) }
-    static var checkForUpdates: String { tr(.checkForUpdates) }
-    static var checking: String { tr(.checking) }
-    static var upToDate: String { tr(.upToDate) }
-    static var updateFailed: String { tr(.updateFailed) }
-    static var openDownloadPage: String { tr(.openDownloadPage) }
-
-    static func lastUpdate(_ timeString: String) -> String {
-        String(format: tr(.lastUpdate), timeString)
-    }
-
-    static func moreItems(_ count: Int) -> String {
-        String(format: tr(.moreItems), count)
-    }
-}
-
-extension UserDefaults {
-    @objc fileprivate var app_language_raw: String {
-        return string(forKey: "app_language") ?? ""
-    }
+    var settings: String { tr(.set) }; var settingsDescription: String { tr(.setDesc) }
+    var systemReminders: String { tr(.sysRem) }; var enableSync: String { tr(.enSync) }
+    var authorized: String { tr(.auth) }; var notAuthorized: String { tr(.notAuth) }
+    var authorizeAccess: String { tr(.authAcc) }; var authorizePrompt: String { tr(.authPrompt) }
+    var authorizeMessage: String { tr(.authMsg) }; var languageTitle: String { tr(.lang) }
+    var reminderAccessAllowed: String { tr(.remAllow) }; var reminderAccessDeniedText: String { tr(.remDeny) }
+    var reminderAccessRestricted: String { tr(.remRestr) }; var reminderAccessPending: String { tr(.remPend) }
+    var reminderAccessUnknown: String { tr(.remUnk) }; var reminderAccessGrantedDesc: String { tr(.remAllowD) }
+    var reminderAccessDeniedDesc: String { tr(.remDenyD) }; var reminderAccessRestrictedDesc: String { tr(.remRestrD) }
+    var reminderAccessPendingDesc: String { tr(.remPendD) }; var refreshing: String { tr(.refresh) }
+    var refreshNow: String { tr(.refNow) }; var noDatabaseAuth: String { tr(.noDBAuth) }
+    var noTodos: String { tr(.noTodo) }; var settingsMenu: String { tr(.setMenu) }; var quit: String { tr(.quit) }
+    var remindersSection: String { tr(.remSec) }; var todaySection: String { tr(.today) }
+    var tomorrowSection: String { tr(.tomorrow) }; var scheduledSection: String { tr(.sch) }
+    var overdueSection: String { tr(.overdue) }; var unscheduledSection: String { tr(.unsched) }
+    var pauseSync: String { tr(.pause) }; var resumeSync: String { tr(.resume) }
+    var completedSection: String { tr(.comp) }; var launchAtLogin: String { tr(.login) }
+    var launchAtLoginToggle: String { tr(.loginTog) }; var launchAtLoginDescription: String { tr(.loginDesc) }
+    var syncInterval: String { tr(.syncInt) }; var syncIntervalImmediate: String { tr(.syncImm) }
+    var showCompletedSection: String { tr(.showComp) }; var showCompletedSectionDescription: String { tr(.showCompD) }
+    var allBearTodosCompleted: String { tr(.allDone) }; var save: String { tr(.save) }; var cancel: String { tr(.cancel) }
+    var generalSettings: String { tr(.general) }; var syncIntegration: String { tr(.syncIntg) }
+    var bearMonitorMethod: String { tr(.bearMon) }; var bearMonitorFileWatcher: String { tr(.bearFW) }
+    var bearMonitorPolling: String { tr(.bearPoll) }; var bearMonitorFileWatcherDesc: String { tr(.bearFWDesc) }
+    var bearMonitorPollingDesc: String { tr(.bearPollDesc) }; var about: String { tr(.about) }
+    var appVersion: String { tr(.appVer) }; var checkForUpdates: String { tr(.chkUpd) }
+    var checking: String { tr(.chking) }; var upToDate: String { tr(.upToDate) }
+    var updateFailed: String { tr(.updFail) }; var openDownloadPage: String { tr(.openDL) }
+    func lastUpdate(_ t: String) -> String { String(format: tr(.lastUp), t) }
+    func syncIntervalDescription(_ s: Int) -> String { s == 0 ? tr(.syncImm) : String(format: tr(.syncVal), s) }
+    func newVersionAvailable(_ v: String) -> String { String(format: tr(.newVer), v) }
 }

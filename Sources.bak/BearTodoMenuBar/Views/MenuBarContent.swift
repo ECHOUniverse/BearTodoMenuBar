@@ -48,7 +48,7 @@ struct MenuBarContent: View {
                         systemImage: "gearshape",
                         accessibilityLabel: LocalizedStringKey(L10n.settingsMenu),
                         action: {
-                            NSApp.sendAction(Selector(("openSettings:")), to: NSApp.delegate, from: nil)
+                            NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: NSApp.delegate, from: nil)
                         }
                     )
                     .keyboardShortcut(",", modifiers: .command)
@@ -303,7 +303,7 @@ private struct HeaderRefreshButton: View {
         Button(L10n.lastUpdate(timeString), action: action)
             .buttonStyle(.plain)
             .font(.callout)
-            .onChange(of: lastRefresh) { _ in
+            .onChange(of: lastRefresh) {
                 let formatter = RelativeDateTimeFormatter()
                 formatter.unitsStyle = .short
                 timeString = formatter.localizedString(for: lastRefresh, relativeTo: Date())

@@ -24,5 +24,7 @@ AGENTS.md
 .kilo/
 .vscode/
 .trae/
+.task/
+.claude/
 CLAUDE.md
 tasks/

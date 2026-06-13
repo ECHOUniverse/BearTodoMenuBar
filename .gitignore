@@ -23,5 +23,6 @@ build/
 AGENTS.md
 .kilo/
 .vscode/
+.trae/
 CLAUDE.md
-.tasks/
+tasks/
